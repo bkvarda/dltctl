@@ -43,6 +43,10 @@ def _get_dlt_artifacts(pipeline_files=None):
       for f in all_files:
           if f.endswith(".py") or f.endswith(".sql"):
               pipeline_files.append(f)
+      
+      if len(pipeline_files) < 1:
+          return None
+
     else:
         pipeline_files = pipeline_files.replace(" ","").split(',')
     
@@ -56,7 +60,7 @@ def cli():
 cli.add_command(configure_cli, name='configure')
 
 @cli.command()
-@click.option('-n', '--pipeline-name', 'pipeline_name', type=str)
+@click.argument('pipeline_name', type=str, default=None, required=False)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path())
 @click.option('-u', '--auto-update', 'auto_update', is_flag=True)
@@ -72,11 +76,18 @@ def deploy(api_client, pipeline_name, pipeline_files, workspace_path, auto_updat
     settings = _get_pipeline_settings(pipeline_config)
     pipeline_files = _get_dlt_artifacts(pipeline_files)
 
-    if not settings.id and not pipeline_name:
+    if not settings.id and not pipeline_name and not settings.name:
         event_print(
             type="cli_status",
             level='ERROR',
-            msg="Missing pipeline name argument. A pipeline name is required for a first-time deployment")
+            msg="Missing pipeline name argument or config. A pipeline name is required for a first-time deployment")
+        return
+
+    if not pipeline_files:
+        event_print(
+            type="cli_status",
+            level='ERROR',
+            msg="Unable to detect pipeline files in current directory and no pipeline files specified. Pipeline files are required for a pipeline to be created")
         return
     # Update settings with any defined settings
     if not settings.name:
