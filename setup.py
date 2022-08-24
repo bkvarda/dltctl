@@ -1,7 +1,8 @@
-import imp
-import io
-import os
+import sys
 from setuptools import setup, find_packages
+
+if sys.version_info < (3,5):
+    sys.exit('Python < 3.5 is not supported')
 
 version = "0.1"
 setup(
