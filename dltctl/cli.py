@@ -16,6 +16,11 @@ from dltctl.types.events import PipelineEventsResponse
 from dltctl.api.warehouses import DBSQLClient
 from dltctl.utils.print_utils import event_print
 
+pipeline_name_help = "Name of DLT pipeline"
+workspace_path_help = "Full workspace path to use for dlt pipeline file uploads"
+pipeline_files_help = "Comma-delimited list of files that make up your DLT pipeline code and will be uploaded."
+verbose_events_help = "Will print more verbose DLT event logs to the console"
+pipeline_config_help = "Path to pipeline config file. If not specified, will look in local directory for pipeline.json"
 
 def _get_pipeline_settings(pipeline_config=None):
     
@@ -61,16 +66,15 @@ cli.add_command(configure_cli, name='configure')
 
 @cli.command()
 @click.argument('pipeline_name', type=str, default=None, required=False)
-@click.option('-w', '--workspace-path', 'workspace_path', type=str)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path())
-@click.option('-u', '--auto-update', 'auto_update', is_flag=True)
-@click.option('-v', '--verbose-events', 'verbose_events', is_flag=True)
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
+@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
+@click.option('-v', '--verbose-events', 'verbose_events', is_flag=True, help=verbose_events_help)
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-def deploy(api_client, pipeline_name, pipeline_files, workspace_path, auto_update, verbose_events, pipeline_config):
+def deploy(api_client, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     current_dir = os.getcwd()
     settings = _get_pipeline_settings(pipeline_config)
@@ -164,9 +168,9 @@ def deploy(api_client, pipeline_name, pipeline_files, workspace_path, auto_updat
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-w', '--workspace-path', 'workspace_path', type=str)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path())
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
+@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     """Stages DLT pipeline code artifacts as notebooks."""
     if not workspace_path:
@@ -184,7 +188,7 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def stop(api_client, pipeline_config):
     """Stops a pipeline if it is running."""
     settings = _get_pipeline_settings(pipeline_config)
@@ -206,9 +210,9 @@ def stop(api_client, pipeline_config):
 @pipelines_exception_eater
 @provide_api_client
 @click.argument('pipeline_name', type=str)
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
-@click.option('-w', '--workspace-path', 'workspace_path', type=str)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path())
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+@click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
+@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
 def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_files):
     """Creates a pipeline with the specified configuration."""
     current_dir = os.getcwd()
@@ -268,7 +272,7 @@ def delete(api_client, pipeline_config):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def start(api_client, pipeline_config):
     """Starts a pipeline given a config file or pipeline ID"""
     settings = _get_pipeline_settings(pipeline_config)
@@ -281,7 +285,7 @@ def start(api_client, pipeline_config):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def show(api_client, pipeline_config):
     """Shows details about pipeline"""
     settings = _get_pipeline_settings(pipeline_config)
@@ -292,20 +296,19 @@ def show(api_client, pipeline_config):
 @debug_option
 @profile_option
 @pipelines_exception_eater
-@provide_api_client
 @click.argument('pipeline_name', type=str, required=True)
-@click.option('-e', '--edition', 'edition', type=str, default="advanced")
-@click.option('-ch', '--channel', 'channel', type=str, default="CURRENT")
-@click.option('-co', '--continuous', 'continuous', default=False, is_flag=True)
-@click.option('-d', '--development-mode', 'dev_mode', default=True, is_flag=True)
-@click.option('-p', '--enable-photon', 'enable_photon', default=False, is_flag=True)
-@click.option('-s', '--storage', 'storage', type=str, default=None)
-@click.option('-t', '--target', 'target', type=str, default=None)
-@click.option('-cf','--config','configuration',type=str, default=None)
-@click.option('-c', '--cluster', 'clusters', multiple=True, type=str)
-@click.option('-f', '--force', 'force', default=False, is_flag=True)
-@click.option('-o', '--output-dir', 'output_dir', default=None)
-def init(api_client, pipeline_name, edition, channel, continuous, dev_mode, enable_photon, 
+@click.option('-e', '--edition', 'edition', type=str, default="advanced", help="The DLT edition to use")
+@click.option('-ch', '--channel', 'channel', type=str, default="CURRENT", help="The DLT channel to use")
+@click.option('-co', '--continuous', 'continuous', default=False, is_flag=True, help="Whether to use continuous mode or not")
+@click.option('-d', '--development-mode', 'dev_mode', default=True, is_flag=True, help="Whether to use development mode")
+@click.option('-p', '--enable-photon', 'enable_photon', default=False, is_flag=True, help="Enable photon for the cluster")
+@click.option('-s', '--storage', 'storage', type=str, default=None, help="The default storage location for pipeline events and data")
+@click.option('-t', '--target', 'target', type=str, default=None, help="The target db/schema for the pipeline tables")
+@click.option('-cf','--config','configuration',type=str, default=None, help="Additional configuration JSON string of k/v pairs for Pipeline")
+@click.option('-c', '--cluster', 'clusters', multiple=True, type=str, help="JSON cluster config to use for clusters. Can be specified multiple times with different lables")
+@click.option('-f', '--force', 'force', default=False, is_flag=True, help="Whether to overwrite the existing pipline settings file with these settings, if it exists.")
+@click.option('-o', '--output-dir', 'output_dir', default=None, help="Where to write the pipeline settings config file to. Defaults to current directory.")
+def init(pipeline_name, edition, channel, continuous, dev_mode, enable_photon, 
 storage, target, configuration, clusters, force, output_dir):
     """Initializes local pipeline and cluster settings"""
     
