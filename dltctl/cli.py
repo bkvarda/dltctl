@@ -209,7 +209,7 @@ def stop(api_client, pipeline_config):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.argument('pipeline_name', type=str)
+@click.argument('pipeline_name', type=str, required=False)
 @click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
@@ -221,8 +221,11 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
         event_print("cli_status", level="ERROR", msg=f"Trying to create a pipeline using a config with a pipeline ID: {settings.id}")
         return
 
-    if not settings.name and not pipeline_name:
-        event_print("cli_status", level="ERROR", msg=f"Pipeline name not specified. A pipeline name is required on initial creation.")
+    if not pipeline_name and not settings.name:
+        event_print(
+            type="cli_status",
+            level='ERROR',
+            msg="Missing pipeline name argument or config. A pipeline name is required for a first-time deployment")
         return
 
     if settings.libraries:
@@ -233,7 +236,14 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
             
 
         pipeline_files = _get_dlt_artifacts(pipeline_files)
-        print(pipeline_files)
+
+        if not pipeline_files:
+          event_print(
+            type="cli_status",
+            level='ERROR',
+            msg="Unable to detect pipeline files in current directory and no pipeline files specified. Pipeline files are required for a pipeline to be created")
+          return
+    
         artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
         settings.pipeline_files = artifacts
         settings.save(current_dir)
