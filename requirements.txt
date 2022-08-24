@@ -1,0 +1,3 @@
+databricks-cli
+colorama
+databricks-sql-connector
