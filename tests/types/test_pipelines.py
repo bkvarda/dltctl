@@ -1,17 +1,16 @@
 import unittest
 from unittest.mock import MagicMock
-import pytest
 
 from dltctl.types.pipelines import PipelineSettings
 from dltctl.types.pipelines import ClusterConfig
 
-class TestCreatePipelineConfig(unittest.TestCase):
+class TestPipelineSettings(unittest.TestCase):
     def test_pipeline_settings_from_json(self):
         js = '{"name": "foo"}'
         expected = PipelineSettings(name="foo")
         self.assertEqual(expected.name, 'foo')
-        self.assertEqual(expected.cluster_min_workers, 1)
-        self.assertEqual(expected.cluster_max_workers, 5)
+        self.assertEqual(expected.continuous, False)
+        self.assertEqual(expected.channel, 'CURRENT')
 
     def test_multi_cluster(self):
         js = """{ 
@@ -27,11 +26,76 @@ class TestCreatePipelineConfig(unittest.TestCase):
   },
   "num_workers": 5
   }"""
-    js_conf = ClusterConfig().from_json(js)
-    maintenance_conf = ClusterConfig().from_json(js)
-    maintenance_conf.label = "maintenance"
-    settings.clusters = [js_conf.to_dict(),maintenance_conf.to_dict()]
+        maint_js = """{ 
+  "label": "maintenance",
+  "cluster_name": "my-cluster",
+  "spark_version": "7.3.x-scala2.12",
+  "node_type_id": "i3.xlarge",
+  "spark_conf": {
+    "spark.speculation": true
+  },
+  "aws_attributes": {
+    "availability": "SPOT",
+    "zone_id": "us-west-2a"
+  },
+  "num_workers": 5
+  }"""
+        js_conf = ClusterConfig().from_json(js).to_dict()
+        maintenance_conf = ClusterConfig().from_json(maint_js).to_dict()
+        pipeline_settings_json = """{
+    "libraries": [],
+    "clusters": [
+        {      
+  "cluster_name": "my-cluster",
+  "spark_version": "7.3.x-scala2.12",
+  "node_type_id": "i3.xlarge",
+  "spark_conf": {
+    "spark.speculation": true
+  },
+  "aws_attributes": {
+    "availability": "SPOT",
+    "zone_id": "us-west-2a"
+  },
+  "num_workers": 5
+  },
+  { 
+  "label": "maintenance",
+  "cluster_name": "my-cluster",
+  "spark_version": "7.3.x-scala2.12",
+  "node_type_id": "i3.xlarge",
+  "spark_conf": {
+    "spark.speculation": true
+  },
+  "aws_attributes": {
+    "availability": "SPOT",
+    "zone_id": "us-west-2a"
+  },
+  "num_workers": 5
+  }
+    ],
+    "continuous": false,
+    "development": true,
+    "edition": "advanced",
+    "photon": false,
+    "channel": "CURRENT",
+    "name": "mypipeline"
+}"""
+        settings = PipelineSettings(clusters=[js_conf, maintenance_conf])
+        settings_dict = settings.to_json()
+        test_settings_dict = PipelineSettings().from_json(pipeline_settings_json).to_json()
+
+        self.assertEqual(settings_dict["clusters"][0]["label"], test_settings_dict["clusters"][0]["label"])
+        self.assertEqual(settings_dict["clusters"][0]["label"], "default")
+        self.assertEqual(settings_dict["clusters"][1]["label"], test_settings_dict["clusters"][1]["label"])
+        self.assertEqual(settings_dict["clusters"][0]["aws_attributes"], test_settings_dict["clusters"][1]["aws_attributes"])
 
 
-    #def test_pipeline_settings_to_json(self):
+    def test_pipeline_settings_to_json(self):
+        settings = PipelineSettings(name="foo")
+        settings_json = settings.to_json()
+
+        self.assertEqual(settings_json["name"], "foo")
+        self.assertEqual(settings_json["development"], True)
+        self.assertEqual(settings_json["photon"], False)
+
 

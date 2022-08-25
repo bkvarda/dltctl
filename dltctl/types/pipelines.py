@@ -33,6 +33,14 @@ class ClusterConfig():
         
         return self
 
+    def from_dict(self, dict):
+        try:
+            for k, v in dict.items():
+                setattr(self, k, v)
+        except Exception as e:
+            raise
+        return self
+
     def to_dict(self):
         base_dict = self.__dict__
         cluster_dict = {}
@@ -145,6 +153,7 @@ class PipelineSettings():
             json_body["clusters"].append(default_cluster.to_dict())
         else:
             for c in self.clusters:
-                json_body["clusters"].append(c)
+                cluster = ClusterConfig().from_dict(c)
+                json_body["clusters"].append(cluster.to_dict())
         
         return json_body
