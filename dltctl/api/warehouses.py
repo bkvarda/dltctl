@@ -24,6 +24,7 @@ class DBSQLClient():
         warehouses = self.client.perform_query(
             'GET', f'/sql/warehouses', headers=self.headers)
         return warehouses["warehouses"]
+
     
     def get_warehouse(self, warehouse_id):
         warehouse = self.client.perform_query(
@@ -43,8 +44,10 @@ class DBSQLClient():
                 self.server_hostname = odbc_params["hostname"]
                 self.http_path = odbc_params["path"]
                 return warehouse
-            else:
-                raise NoRunningWarehouseFoundError("A running warehouse that you have access to is required to execute queries")
+        # If no running warehouses to use, throw an exception for now. 
+        # TODO - Pick one to start if needed
+        raise NoRunningWarehouseFoundError("A running warehouse that you have access to is required to execute queries")
+         
 
     def connect(self):
         if not self.sql_client:
@@ -69,6 +72,7 @@ class DBSQLClient():
         results = self.cursor.fetchall_arrow()
         df = results.to_pandas()
         print(tabulate(df, headers = 'keys', tablefmt = 'psql'))
+        self.disconnect()
         return df
 
         
