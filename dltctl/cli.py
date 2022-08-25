@@ -192,6 +192,15 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
 def stop(api_client, pipeline_config):
     """Stops a pipeline if it is running."""
     settings = _get_pipeline_settings(pipeline_config)
+
+    if not settings.id:
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="No pipeline ID in settings or no settings found. Nothing to stop.")
+        return
+
+
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     state = PipelinesApi(api_client).get_pipeline_state(settings.id)
     
@@ -268,14 +277,22 @@ def delete(api_client, pipeline_config):
     """Deletes a pipeline"""
     current_dir = os.getcwd()
     settings = _get_pipeline_settings(pipeline_config)
-    ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
+    
     if not settings.id:
-        print("No pipeline ID found, nothing to delete")
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="No pipeline ID in settings or no settings found. Nothing to delete.")
         return
+
+    ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     res = PipelinesApi(api_client).delete(settings.id)
     settings.id = None
     settings.save(current_dir)
-    print(f"Pipeline deleted and id removed from local settings")
+    event_print(
+            type="cli_status",
+            level='INFO',
+            msg="Pipeline successfully deleted and pipeline ID removed from config.")
 
 @cli.command()
 @debug_option
@@ -286,6 +303,14 @@ def delete(api_client, pipeline_config):
 def start(api_client, pipeline_config):
     """Starts a pipeline given a config file or pipeline ID"""
     settings = _get_pipeline_settings(pipeline_config)
+
+    if not settings.id:
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="No pipeline ID in settings or no settings found. Nothing to start.")
+        return
+
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     PipelinesApi(api_client).start_update(settings.id)
     PipelinesApi(api_client).stream_events(settings.id, ts=ts, max_polls_without_events=10)
@@ -299,6 +324,15 @@ def start(api_client, pipeline_config):
 def show(api_client, pipeline_config):
     """Shows details about pipeline"""
     settings = _get_pipeline_settings(pipeline_config)
+    
+    if not settings.id:
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="No pipeline ID in settings or no settings found. Nothing to show.")
+        return
+
+    # TODO - make this prettier
     p = PipelinesApi(api_client).get(settings.id)
     print(p)
 
