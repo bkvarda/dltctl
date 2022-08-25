@@ -5,6 +5,10 @@ import pyarrow as pa
 
 import os
 
+class NoRunningWarehouseFoundError(Exception):
+    pass
+
+
 class DBSQLClient():
     def __init__(self, api_client, sql_client=None, sql_warehouse=None, hostname=None, token=None, headers=None):
         self.client = api_client
@@ -40,7 +44,7 @@ class DBSQLClient():
                 self.http_path = odbc_params["path"]
                 return warehouse
             else:
-                raise Exception("A running warehouse that you have access to is required to execute queries")
+                raise NoRunningWarehouseFoundError("A running warehouse that you have access to is required to execute queries")
 
     def connect(self):
         if not self.sql_client:
