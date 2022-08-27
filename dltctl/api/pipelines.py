@@ -61,7 +61,7 @@ class PipelinesApi(PipelinesApi):
     def stream_events(self, pipeline_id, ts=None, polling_interval=3, max_polls_without_events=None, verbose=False):
         start_time = ts
         polls_without_events = 0
-        last_event = ""
+        last_event = None
         while True:
           to_exit = False
           t = (datetime.datetime.utcnow() - datetime.timedelta(seconds=5)).isoformat()[:-3]+'Z'  if start_time is None else start_time
@@ -70,7 +70,9 @@ class PipelinesApi(PipelinesApi):
           events = PipelineEventsResponse().from_json_response(json_events).to_pipeline_events()
           if events is None:
               polls_without_events+=1
-              if 'WAITING_FOR_RESOURCES' in last_event.message:
+              if not last_event:
+                  continue
+              elif 'WAITING_FOR_RESOURCES' in last_event.message:
                   polls_without_events = 0 
 
               if max_polls_without_events and (polls_without_events >= max_polls_without_events):
@@ -155,5 +157,4 @@ class PipelinesApi(PipelinesApi):
         events = PipelineEventsResponse().from_json_response(json_events)
         events.to_typed_pipeline_events()
         graph = events.construct_graph(last_update_id)
-        print(graph)
-        return
+        return graph

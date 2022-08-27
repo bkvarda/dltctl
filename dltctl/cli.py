@@ -336,6 +336,9 @@ def show(api_client, pipeline_config):
     p = PipelinesApi(api_client).get(settings.id)
     print(p)
 
+    graph = PipelinesApi(api_client).get_graph(settings.id)
+    print(graph)
+
 @cli.command()
 @debug_option
 @profile_option
