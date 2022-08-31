@@ -44,18 +44,21 @@ def _get_dlt_artifacts(pipeline_files=None):
     all_files = os.listdir(current_dir)
     #  Automatically add any local python or sql files as pipeline artifacts
     if pipeline_files is None:
-      pipeline_files = []
-      for f in all_files:
-          if f.endswith(".py") or f.endswith(".sql"):
-              pipeline_files.append(f)
-      
-      if len(pipeline_files) < 1:
-          return None
+       pipeline_files = []
 
     else:
-        pipeline_files = pipeline_files.replace(" ","").split(',')
-    
+        all_files = pipeline_files.replace(" ","").split(',')
+        pipeline_files = []
+
+    for f in all_files:
+        if f.endswith(".py") or f.endswith(".sql"):
+            pipeline_files.append(f)
+      
+    if len(pipeline_files) < 1:
+        return None
+        
     return pipeline_files
+
 
 
 @click.group(help="CLI for development and CI/CD of DLT Pipelines")
