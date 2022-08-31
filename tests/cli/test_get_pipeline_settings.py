@@ -19,7 +19,7 @@ class TestCliPipelineSettings(unittest.TestCase):
     def test_local_settings(self):
         with mock.patch('os.getcwd') as cwd_mock:
             with mock.patch('os.path.exists') as os_mock:
-                path = str(Path(__file__).parent.resolve()) + '/files/valid/'
+                path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
                 cwd_mock.return_value = path
                 os_mock.return_value = True
                 settings = _get_pipeline_settings(None)
@@ -28,7 +28,7 @@ class TestCliPipelineSettings(unittest.TestCase):
 
 
     def test_specified_settings(self):
-        path = str(Path(__file__).parent.resolve()) + '/files/valid/'
+        path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
         settings = _get_pipeline_settings(pipeline_config=path)
         self.assertEqual(settings.id, 'some-id')
         self.assertEqual(settings.name, 'mycoolname')
@@ -36,12 +36,12 @@ class TestCliPipelineSettings(unittest.TestCase):
     def test_invalid_local_settings(self):
         with mock.patch('os.getcwd') as cwd_mock:
             with mock.patch('os.path.exists') as os_mock:
-                path = str(Path(__file__).parent.resolve()) + '/files/invalid/'
+                path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
                 cwd_mock.return_value = path
                 os_mock.return_value = True
                 self.assertRaises(JSONDecodeError, lambda: _get_pipeline_settings(None))
 
 
     def test_invalid_specified_settings(self):
-        path = str(Path(__file__).parent.resolve()) + '/files/invalid/'
+        path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
         self.assertRaises(JSONDecodeError, lambda: _get_pipeline_settings(pipeline_config=path))

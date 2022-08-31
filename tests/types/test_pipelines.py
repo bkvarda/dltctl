@@ -1,5 +1,8 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest import mock
+from pathlib import Path
+from json import JSONDecodeError
+import tempfile, os
 
 from dltctl.types.pipelines import PipelineSettings
 from dltctl.types.pipelines import ClusterConfig
@@ -97,5 +100,36 @@ class TestPipelineSettings(unittest.TestCase):
         self.assertEqual(settings_json["name"], "foo")
         self.assertEqual(settings_json["development"], True)
         self.assertEqual(settings_json["photon"], False)
+
+    def test_save(self):
+      settings = PipelineSettings()
+      with tempfile.TemporaryDirectory() as tmpdirname:
+        settings.save(tmpdirname)
+        self.assertIn("pipeline.json",os.listdir(tmpdirname))
+    
+    def test_load_valid(self):
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
+      settings = PipelineSettings().load(path)
+      self.assertEqual(settings.id, 'some-id')
+      self.assertEqual(settings.name, 'mycoolname')
+
+    def test_load_invalid(self):
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
+      settings = PipelineSettings()
+      self.assertRaises(JSONDecodeError, lambda: settings.load(path))
+
+    def test_load_invalid_key(self):
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/invalidkey/'
+      settings = PipelineSettings().load(path)
+      self.assertEqual(hasattr(settings, "foo"), False)
+
+    def test_load_no_pipeline_json(self):
+      #FileNotFoundError
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/nopipelinefile'
+      self.assertRaises(FileNotFoundError, lambda: PipelineSettings().load(path))
+     
+
+
+
 
 

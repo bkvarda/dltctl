@@ -98,7 +98,11 @@ class PipelineSettings():
         try:
             settings_dict = json.loads(json_str)
             for k, v in settings_dict.items():
-                setattr(self, k, v)
+                if hasattr(self, k):
+                  setattr(self, k, v)
+                # Special case for one property that doesn't match actual PipelineSettings
+                elif k == 'pipeline_files':
+                    setattr(self, k, v)
         except Exception as e:
             raise
         

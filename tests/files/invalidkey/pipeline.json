@@ -1,0 +1,45 @@
+{
+    "libraries": [
+        {
+            "notebook": {
+                "path": "/Users/foo@databricks.com/test.sql"
+            }
+        },
+        {
+            "notebook": {
+                "path": "/Users/foo@databricks.com/other.sql"
+            }
+        },
+        {
+            "notebook": {
+                "path": "/Users/foo@databricks.com/multiplex_cdc_bronze.py"
+            }
+        }
+    ],
+    "clusters": [
+        {
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge"
+        }
+    ],
+    "continuous": false,
+    "development": true,
+    "edition": "advanced",
+    "photon": false,
+    "channel": "CURRENT",
+    "configuration": {
+        "destination_table": "b",
+        "starting_offsets": "earliest",
+        "typea": "{\"foo\": \"baz\"}",
+        "pipelines.tableManagedByMultiplePipelinesCheck.enabled": "false"
+    },
+    "storage": "dbfs:/pipelines/some-id",
+    "id": "some-id",
+    "name": "mycoolname",
+    "foo": "bar"
+}
