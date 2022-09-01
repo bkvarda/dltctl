@@ -164,3 +164,6 @@ bin/
 
 .vscode/
 pyvenv.cfg
+
+# Deleted
+tests/cli/files/valid/pipeline.json
