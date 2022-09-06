@@ -76,7 +76,11 @@ Or as before, you can still use dltctl deploy to combine all of these together.
 ```
 dltctl deploy
 ```
-
+You can trigger a full refresh using the -r flag:
+```
+dltctl start -r
+dltctl deploy -r
+```
 
 
 

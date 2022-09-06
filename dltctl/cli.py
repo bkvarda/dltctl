@@ -20,7 +20,8 @@ pipeline_name_help = "Name of DLT pipeline"
 workspace_path_help = "Full workspace path to use for dlt pipeline file uploads"
 pipeline_files_help = "Comma-delimited list of files that make up your DLT pipeline code and will be uploaded."
 verbose_events_help = "Will print more verbose DLT event logs to the console"
-pipeline_config_help = "Path to pipeline config file. If not specified, will look in local directory for pipeline.json"
+pipeline_config_help = "Directory containing config named pipeline.json. If not specified, will look in local directory for pipeline.json"
+full_refresh_help = "Whether to execute a full refresh of the pipeline"
 
 def _get_pipeline_settings(pipeline_config=None):
     
@@ -69,15 +70,16 @@ cli.add_command(configure_cli, name='configure')
 
 @cli.command()
 @click.argument('pipeline_name', type=str, default=None, required=False)
+@click.option('-r', '--full-refresh', 'full_refresh', is_flag=True, help=full_refresh_help)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
 @click.option('-v', '--verbose-events', 'verbose_events', is_flag=True, help=verbose_events_help)
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-def deploy(api_client, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
+def deploy(api_client, full_refresh, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     current_dir = os.getcwd()
     settings = _get_pipeline_settings(pipeline_config)
@@ -145,7 +147,7 @@ def deploy(api_client, pipeline_name, pipeline_files, workspace_path, verbose_ev
               type="cli_status",
               level='INFO',
               msg=f"Starting pipeline {settings.id}")
-      PipelinesApi(api_client).start_update(settings.id)
+      PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
       
       event_print(
               type="cli_status",
@@ -173,9 +175,9 @@ def deploy(api_client, pipeline_name, pipeline_files, workspace_path, verbose_ev
 @provide_api_client
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def stage(api_client, pipeline_config, pipeline_files, workspace_path):
-    """Stages DLT pipeline code artifacts as notebooks."""
+    """Stages DLT pipeline code artifacts as notebooks and updates settings."""
     if not workspace_path:
         workspace_path = WorkspaceApi(api_client).get_default_workspace_path()
 
@@ -184,14 +186,16 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     pipeline_files = _get_dlt_artifacts(pipeline_files)
     artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
     settings.pipeline_files = artifacts
+    pipeline = PipelinesApi(api_client).edit(settings.id, settings)
     settings.save(current_dir)
+    
 
 @cli.command()
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def stop(api_client, pipeline_config):
     """Stops a pipeline if it is running."""
     settings = _get_pipeline_settings(pipeline_config)
@@ -222,7 +226,7 @@ def stop(api_client, pipeline_config):
 @pipelines_exception_eater
 @provide_api_client
 @click.argument('pipeline_name', type=str, required=False)
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
 def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_files):
@@ -275,7 +279,7 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path())
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path())
 def delete(api_client, pipeline_config):
     """Deletes a pipeline"""
     current_dir = os.getcwd()
@@ -302,8 +306,9 @@ def delete(api_client, pipeline_config):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
-def start(api_client, pipeline_config):
+@click.option('-r', '--full-refresh', 'full_refresh', is_flag=True, help=full_refresh_help)
+@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
+def start(api_client, full_refresh, pipeline_config):
     """Starts a pipeline given a config file or pipeline ID"""
     settings = _get_pipeline_settings(pipeline_config)
 
@@ -315,7 +320,7 @@ def start(api_client, pipeline_config):
         return
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
-    PipelinesApi(api_client).start_update(settings.id)
+    PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
     PipelinesApi(api_client).stream_events(settings.id, ts=ts, max_polls_without_events=10)
 
 @cli.command()
