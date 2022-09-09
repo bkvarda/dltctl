@@ -11,7 +11,7 @@ setup(
     packages=find_packages(include=['dltctl*']),
     install_requires=[
         # Note: please keep this in sync with `requirements.txt`.
-        'databricks-cli>=0.17.0',
+        'databricks-cli>=0.17.3',
         'databricks-sql-connector>=2.0.2',
         'click>=7.0',
         'pyjwt>=1.7.0',

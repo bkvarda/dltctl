@@ -3,9 +3,7 @@ import json, time
 import click
 import datetime
 from databricks_cli.pipelines.api import PipelinesApi
-from databricks_cli.workspace.api import WorkspaceApi
 from dltctl.types.events import PipelineEventsResponse
-from dltctl.types.pipelines import PipelineSettings
 
 class PipelineNameNotUniqueError(Exception):
     pass
@@ -140,7 +138,6 @@ class PipelinesApi(PipelinesApi):
     def get_events(self, pipeline_id, max_result=100, order_by="timestamp asc", timestamp_filter=None):
         headers = {}
         _data = {}
-        #_data["page_token"] = page_token
         _data["max_results"] = max_result
         _data["order_by"] = order_by
         if timestamp_filter:
@@ -151,10 +148,3 @@ class PipelinesApi(PipelinesApi):
         
         return response
     
-    def get_graph(self, pipeline_id):
-        last_update_id = self.get_last_update_id(pipeline_id)
-        json_events = self.get_events(pipeline_id)
-        events = PipelineEventsResponse().from_json_response(json_events)
-        events.to_typed_pipeline_events()
-        graph = events.construct_graph(last_update_id)
-        return graph

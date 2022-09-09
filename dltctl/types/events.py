@@ -145,30 +145,4 @@ class PipelineEventsResponse:
 
             self.typed_pipeline_events = typed_pipeline_events
             return typed_pipeline_events
-    
-    def construct_graph(self,update_id):
-        
-        if not self.events:
-            return None
-        
-        if not self.typed_pipeline_events:
-            self.to_typed_pipeline_events()
-
-        flows = self.typed_pipeline_events["flow_definition"]
-
-        if len(flows) < 1:
-            return None
-        
-        flows_arr = []
-        for flow in flows:
-            flows_dict = {}
-            if flow.origin["update_id"] == update_id:
-                flow_name = flow.origin["flow_name"]
-                input_datasets = flow.details["flow_definition"]["input_datasets"] if "input_datasets" in flow.details["flow_definition"] else None
-                output_dataset = flow.details["flow_definition"]["output_dataset"] if "output_dataset" in flow.details["flow_definition"] else None
-                flows_dict["flow_name"] = flow_name
-                flows_dict["input_datasets"] = input_datasets
-                flows_dict["output_dataset"] = output_dataset
-                flows_arr.append(flows_dict)
-        return flows_arr
 

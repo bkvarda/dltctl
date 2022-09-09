@@ -1,7 +1,4 @@
-import json, time
 from pathlib import Path
-import click
-from datetime import datetime
 from databricks_cli.pipelines.api import PipelinesApi
 from databricks_cli.workspace.api import WorkspaceApi
 from databricks_cli.workspace.types import WorkspaceLanguage
@@ -12,7 +9,6 @@ class WorkspaceApi(WorkspaceApi):
     def get_default_workspace_path(self):
       response = self.client.client.perform_query(
             'GET', f'/preview/scim/v2/Me')
-      # TODO service principals
       user_name = response["userName"]
       default_path = Path('/Users',f'{user_name}/').as_posix()
       return default_path
