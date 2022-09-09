@@ -9,7 +9,7 @@ pip install git+https://github.com/bkvarda/dltctl.git
 #### First-time Configuration
 In order to function dltctl needs to know which Databricks workspace and which tokens/auth info to use. If you already use the databricks cli, dltctl will use whatever you've configured there. Otherwise, you can configure it using the same commands you would with the databricks CLI:
 ```
-dltctl configure --token
+dltctl configure --jobs-api-version=2.1 --token
 ```
 
 #### Usage
