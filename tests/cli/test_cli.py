@@ -1,5 +1,5 @@
 from json import JSONDecodeError
-import mock
+from unittest import mock
 import pytest
 from click import Context, Command
 from click.testing import CliRunner
