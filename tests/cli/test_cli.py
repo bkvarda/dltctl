@@ -4,6 +4,7 @@ import pytest
 from click import Context, Command
 from click.testing import CliRunner
 from pathlib import Path
+from tests.utils import provide_conf
 import dltctl.cli as cli
 from dltctl.types.pipelines import PipelineSettings
 
@@ -77,13 +78,14 @@ def click_ctx():
     """
     return Context(Command('cmd'))
 
-
+@provide_conf
 def test_create_pipeline_valid_settings(pipelines_api_mock, workspace_api_mock, valid_pipeline_settings_no_id, settings_save_mock):
  
     runner = CliRunner()
     result = runner.invoke(cli.create)
     assert "Creating pipeline named: mycoolname" in result.stdout
     assert result.exit_code == 0
+
 
 def test_create_pipeline_valid_name(pipelines_api_mock, workspace_api_mock, settings_save_mock):
  
