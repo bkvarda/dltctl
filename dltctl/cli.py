@@ -2,15 +2,13 @@
 from email.policy import default
 from threading import local
 import click
-import os, datetime, json
+import os, datetime, json, time
 from pathlib import Path
 from databricks_cli.configure.config import provide_api_client, profile_option, debug_option
 from databricks_cli.configure.cli import configure_cli
 from databricks_cli.utils import pipelines_exception_eater
-from requests import JSONDecodeError
 from dltctl.api.pipelines import PipelinesApi
 from dltctl.api.workspace import WorkspaceApi
-#from databricks_cli.jobs.api import JobsApi
 from dltctl.api.jobs import JobsApi
 from dltctl.types.pipelines import PipelineSettings, ClusterConfig, JobConfig
 from dltctl.types.events import PipelineEventsResponse
@@ -25,9 +23,9 @@ pipeline_config_help = "Directory containing config named pipeline.json. If not 
 full_refresh_help = "Whether to execute a full refresh of the pipeline"
 as_job_help = "(experimental) Whether to run as a Databricks job non-interactively"
 
-def _create_or_update_job(api_client, job_id, settings, full_refresh):
+def _create_or_update_job(api_client, settings, full_refresh):
     # If job doesn't exist create one
-        if not job_id:
+        if not settings.get_job_id():
             event_print(
             type="cli_status",
             level='INFO',
@@ -50,6 +48,31 @@ def _create_or_update_job(api_client, job_id, settings, full_refresh):
         else:
             return settings
     
+def _run_as_job(api_client, settings, full_refresh, settings_dir):
+    event_print(
+            type="cli_status",
+            level='INFO',
+            msg="Running non-interactively as a job")
+    
+    # Check if associated job
+    settings = _create_or_update_job(api_client, settings, full_refresh)
+    settings.save(settings_dir)
+    
+    # Otherwise start the job
+    event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Starting job {settings.get_job_id()}")
+    
+    JobsApi(api_client).run_now(settings.get_job_id(),full_refresh=bool(full_refresh))
+
+    event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Job started: {settings.get_job_id()}")
+    
+    return
+
 
 def _get_save_dir(pipeline_config=None):
     if pipeline_config:
@@ -104,6 +127,7 @@ cli.add_command(configure_cli, name='configure')
 
 @cli.command()
 @click.argument('pipeline_name', type=str, default=None, required=False)
+@click.option('-j', '--as-job', 'as_job', is_flag=True, help=as_job_help)
 @click.option('-r', '--full-refresh', 'full_refresh', is_flag=True, help=full_refresh_help)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=workspace_path_help)
 @click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=pipeline_files_help)
@@ -113,7 +137,7 @@ cli.add_command(configure_cli, name='configure')
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-def deploy(api_client, full_refresh, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
+def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     output_dir = _get_save_dir(pipeline_config)
     settings = _get_pipeline_settings(pipeline_config)
@@ -153,6 +177,7 @@ def deploy(api_client, full_refresh, pipeline_name, pipeline_files, workspace_pa
               level='INFO',
               msg=f"Pipeline {settings.id} is currrently RUNNING. Stopping pipeline.")
               update = PipelinesApi(api_client).stop(settings.id)
+              time.sleep(10)
       # Otherwise it's a new pipeline
       else:
           event_print(
@@ -176,24 +201,30 @@ def deploy(api_client, full_refresh, pipeline_name, pipeline_files, workspace_pa
               msg=f"Updating settings for pipeline ID: {settings.id}")
       PipelinesApi(api_client).edit(settings.id, settings)
 
-
-      event_print(
-              type="cli_status",
-              level='INFO',
-              msg=f"Starting pipeline {settings.id}")
-      PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
-      
-      event_print(
-              type="cli_status",
-              level='INFO',
-              msg=f"Waiting for pipeline events...")
-      ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
-
-      # If it's a streaming pipeline, we stop tailing events after some time without events
-      if(settings.continuous):  
-          PipelinesApi(api_client).stream_events(settings.id, ts=ts, max_polls_without_events=10, verbose=bool(verbose_events))
+      if(bool(as_job)):
+        _run_as_job(api_client=api_client, 
+          settings=settings, 
+          full_refresh=bool(full_refresh),
+          settings_dir=output_dir)
       else:
-          PipelinesApi(api_client).stream_events(settings.id, ts=ts, verbose=bool(verbose_events))
+          event_print(
+                  type="cli_status",
+                  level='INFO',
+                  msg=f"Starting pipeline {settings.id}")
+          PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
+          
+          event_print(
+                  type="cli_status",
+                  level='INFO',
+                  msg=f"Waiting for pipeline events...")
+          ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
+    
+          # If it's a streaming pipeline, we stop tailing events after some time without events
+          if(settings.continuous):  
+              PipelinesApi(api_client).stream_events(settings.id, ts=ts, max_polls_without_events=10, verbose=bool(verbose_events))
+          else:
+              PipelinesApi(api_client).stream_events(settings.id, ts=ts, verbose=bool(verbose_events))
+      
     
     except Exception as e:
         event_print(
@@ -347,6 +378,8 @@ def start(api_client, as_job, full_refresh, pipeline_config):
     """Starts a pipeline given a config file or pipeline ID"""
     settings = _get_pipeline_settings(pipeline_config)
     output_dir = _get_save_dir(pipeline_config)
+    
+    p_api = PipelinesApi(api_client)
 
     if not settings.id:
         event_print(
@@ -355,36 +388,20 @@ def start(api_client, as_job, full_refresh, pipeline_config):
             msg="No pipeline ID in settings or no settings found. Nothing to start.")
         return
 
-    updated_settings = PipelineSettings().from_dict(PipelinesApi(api_client).get_pipeline_settings(settings.id))
+    updated_settings = PipelineSettings().from_dict(p_api.get_pipeline_settings(settings.id))
     settings = updated_settings
 
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     
     if(bool(as_job)):
-        event_print(
-            type="cli_status",
-            level='INFO',
-            msg="Running non-interactively as a job")
-        # Check if associated job
-        job_id = settings.get_job_id()
-        
-        settings = _create_or_update_job(api_client, job_id, settings, full_refresh)
-        settings.save(output_dir)
-        # Otherwise start the job
-        event_print(
-                  type="cli_status",
-                  level='INFO',
-                  msg=f"Starting job {settings.get_job_id()}")
-        JobsApi(api_client).run_now(settings.get_job_id(),full_refresh=bool(full_refresh))
-
-        event_print(
-                  type="cli_status",
-                  level='INFO',
-                  msg=f"Job started: {settings.get_job_id()}")
+        _run_as_job(api_client=api_client, 
+          settings=settings, 
+          full_refresh=bool(full_refresh),
+          settings_dir=output_dir)
     else:
-        PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
-        PipelinesApi(api_client).stream_events(settings.id, ts=ts, max_polls_without_events=10)
+        p_api.start_update(settings.id, bool(full_refresh))
+        p_api.stream_events(settings.id, ts=ts, max_polls_without_events=10)
 
 @cli.command()
 @debug_option

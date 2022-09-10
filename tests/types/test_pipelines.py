@@ -112,6 +112,7 @@ class TestPipelineSettings(unittest.TestCase):
       settings = PipelineSettings().load(path)
       self.assertEqual(settings.id, 'some-id')
       self.assertEqual(settings.name, 'mycoolname')
+      self.assertEqual(settings.get_job_id(), "foo")
 
     def test_load_invalid(self):
       path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
@@ -127,6 +128,12 @@ class TestPipelineSettings(unittest.TestCase):
       #FileNotFoundError
       path = str(Path(__file__).parent.parent.resolve()) + '/files/nopipelinefile'
       self.assertRaises(FileNotFoundError, lambda: PipelineSettings().load(path))
+
+    def test_set_get_job_id(self):
+      settings = PipelineSettings()
+      settings.set_job_id("foo")
+      self.assertEqual(settings.configuration["job_id"], "foo")
+      self.assertEqual(settings.get_job_id(), "foo")
      
 
 

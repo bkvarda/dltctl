@@ -81,6 +81,10 @@ You can trigger a full refresh using the -r flag:
 dltctl start -r
 dltctl deploy -r
 ```
+If you don't want to watch the events, you can instead start or deploy as a job instead:
+```
+dltctl deploy --full-refresh --as-job
+```
 
 
 
