@@ -3,7 +3,7 @@ colorama>=0.4.5
 databricks-sql-connector
 click>=7.0
 pandas
-pyarrow>=9.0.0
-tabulate>=0.8.9
-pytest-cov>=3.0.0
-decorator>=5.1.1
+pyarrow
+tabulate
+pytest-cov
+decorator
