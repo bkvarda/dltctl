@@ -12,7 +12,7 @@ setup(
     install_requires=[
         # Note: please keep this in sync with `requirements.txt`.
         'databricks-cli>=0.17.3',
-        'databricks-sql-connector>=2.0.2',
+        'databricks-sql-connector',
         'click>=7.0',
         'pyjwt>=1.7.0',
         'oauthlib>=3.1.0',
@@ -32,7 +32,6 @@ setup(
     author='Brandon Kvarda',
     author_email='brandon@databricks.com',
     description='A command line interface for Databricks Delta Live Tables',
-    #long_description=io.open('README.rst', encoding='utf-8').read(),
     license='Apache License 2.0',
     classifiers=[
         'Intended Audience :: Developers',
