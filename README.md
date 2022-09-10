@@ -1,5 +1,5 @@
 ## dltctl
-![https://img.shields.io/github/workflow/status/bkvarda/dltctl/testing]
+![Build badge](https://img.shields.io/github/workflow/status/bkvarda/dltctl/testing)
 A CLI tool for fast local iteration on Delta Live Tables pipelines and rapid deployment
 
 #### Installation
