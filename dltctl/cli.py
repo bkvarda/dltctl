@@ -244,6 +244,8 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
 def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     """Stages DLT pipeline code artifacts as notebooks and updates settings."""
     settings = _get_pipeline_settings(pipeline_config)
+    output_dir = _get_save_dir(pipeline_config)
+    pipeline_files = _get_dlt_artifacts(pipeline_files)
 
     if not settings.id:
         event_print(
@@ -252,12 +254,17 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
             msg="No pipeline ID in settings or no settings found. Nothing to stop.")
         exit(1)
 
+    if not pipeline_files:
+        event_print(
+            type="cli_status",
+            level='ERROR',
+            msg="Unable to detect pipeline files in current directory and no pipeline files specified. Pipeline files are required for a pipeline to be created")
+        exit(1)
+
     if not workspace_path:
         workspace_path = WorkspaceApi(api_client).get_default_workspace_path()
+    
 
-    output_dir = _get_save_dir(pipeline_config)
-    settings = _get_pipeline_settings(pipeline_config)
-    pipeline_files = _get_dlt_artifacts(pipeline_files)
     artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
     settings.pipeline_files = artifacts
     pipeline = PipelinesApi(api_client).edit(settings.id, settings)

@@ -48,6 +48,18 @@ def settings_save_mock():
         settings_save_mock.return_value = _settings_save_mock
         yield _settings_save_mock
 
+@pytest.fixture()
+def pipeline_artifacts():
+    with mock.patch('dltctl.cli._get_dlt_artifacts') as pipeline_artifacts:
+        pipeline_artifacts.return_value = ["foo.py","bar.sql"]
+        yield pipeline_artifacts
+
+@pytest.fixture()
+def no_pipeline_artifacts():
+    with mock.patch('dltctl.cli._get_dlt_artifacts') as no_pipeline_artifacts:
+        no_pipeline_artifacts.return_value = None
+        yield no_pipeline_artifacts
+
 
 @pytest.fixture()
 def pipelines_api_mock():
@@ -172,6 +184,21 @@ def test_stage_pipeline_no_id(valid_pipeline_settings_no_id):
     result = runner.invoke(cli.stage)
     assert "No pipeline ID" in result.stdout
     assert result.exit_code == 1
+
+def test_stage_pipeline_no_artifacts(valid_pipeline_settings, no_pipeline_artifacts, workspace_api_mock, settings_save_mock):
+ 
+    runner = CliRunner()
+    result = runner.invoke(cli.stage)
+    assert "Unable to detect pipeline files" in result.stdout
+    assert result.exit_code == 1
+
+def test_stage_pipeline_valid_artifacts(valid_pipeline_settings, pipeline_artifacts, workspace_api_mock, pipelines_api_mock, settings_save_mock):
+    workspace_api_mock.get_default_workspace_path.return_value = "/Users/foo@databricks.com"
+    workspace_api_mock.get_status.return_value = ""
+    workspace_api_mock.import_workspace.return_value = ""
+    runner = CliRunner()
+    result = runner.invoke(cli.stage)
+    assert result.exit_code == 0
 
 def test_delete_pipeline_no_id(valid_pipeline_settings_no_id):
  
