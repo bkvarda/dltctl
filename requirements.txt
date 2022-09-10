@@ -2,7 +2,7 @@ databricks-cli>=0.17.3
 colorama>=0.4.5
 databricks-sql-connector>=2.0.2
 click>=7.0
-pandas>=1.4.3
+pandas
 pyarrow>=9.0.0
 tabulate>=0.8.9
 pytest-cov>=3.0.0
