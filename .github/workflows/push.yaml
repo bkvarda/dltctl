@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+          - '3.10'
+        os: [ ubuntu-latest ]
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON_VERSION: ${{ matrix.python-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pip
+        run: pip install --upgrade pip
+
+      - name: Install development dependencies 
+        run: pip install --upgrade -r requirements.txt
+
+      - name: Log package versions
+        run: pip freeze
+
+      - name: Run tests
+        run: pytest tests --cov=./
