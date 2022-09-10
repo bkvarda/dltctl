@@ -108,11 +108,11 @@ class TestPipelineSettings(unittest.TestCase):
         self.assertIn("pipeline.json",os.listdir(tmpdirname))
     
     def test_load_valid(self):
-      path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/valid_job_id/'
       settings = PipelineSettings().load(path)
       self.assertEqual(settings.id, 'some-id')
       self.assertEqual(settings.name, 'mycoolname')
-      self.assertEqual(settings.get_job_id(), "foo")
+      self.assertEqual(settings.get_job_id(), "foo1338")
 
     def test_load_invalid(self):
       path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'

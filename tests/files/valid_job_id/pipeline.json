@@ -36,7 +36,8 @@
         "destination_table": "b",
         "starting_offsets": "earliest",
         "typea": "{\"foo\": \"baz\"}",
-        "pipelines.tableManagedByMultiplePipelinesCheck.enabled": "false"
+        "pipelines.tableManagedByMultiplePipelinesCheck.enabled": "false",
+        "job_id": "foo1338"
     },
     "storage": "dbfs:/pipelines/some-id",
     "id": "some-id",

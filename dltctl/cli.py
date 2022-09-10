@@ -2,7 +2,7 @@
 from email.policy import default
 from threading import local
 import click
-import os, datetime, json, time
+import os, datetime, json, time, sys
 from pathlib import Path
 from databricks_cli.configure.config import provide_api_client, profile_option, debug_option
 from databricks_cli.configure.cli import configure_cli
@@ -148,14 +148,14 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
             type="cli_status",
             level='ERROR',
             msg="Missing pipeline name argument or config. A pipeline name is required for a first-time deployment")
-        return
+        exit(1)
 
     if not pipeline_files:
         event_print(
             type="cli_status",
             level='ERROR',
             msg="Unable to detect pipeline files in current directory and no pipeline files specified. Pipeline files are required for a pipeline to be created")
-        return
+        exit(1)
     # Update settings with any defined settings
     if not settings.name:
         settings.name = pipeline_name
@@ -231,7 +231,7 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               type="cli_status",
               level='ERROR',
               msg=f"{str(e)}")
-        return
+        exit(1)
   
 @cli.command()
 @debug_option
@@ -243,6 +243,15 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
 @click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=pipeline_config_help)
 def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     """Stages DLT pipeline code artifacts as notebooks and updates settings."""
+    settings = _get_pipeline_settings(pipeline_config)
+
+    if not settings.id:
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="No pipeline ID in settings or no settings found. Nothing to stop.")
+        exit(1)
+
     if not workspace_path:
         workspace_path = WorkspaceApi(api_client).get_default_workspace_path()
 
@@ -270,7 +279,7 @@ def stop(api_client, pipeline_config):
             type="cli_status",
             level='INFO',
             msg="No pipeline ID in settings or no settings found. Nothing to stop.")
-        return
+        exit(1)
 
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
@@ -300,14 +309,14 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
     settings = _get_pipeline_settings(pipeline_config)
     if settings.id:
         event_print("cli_status", level="ERROR", msg=f"Trying to create a pipeline using a config with a pipeline ID: {settings.id}")
-        return
+        exit(1)
 
     if not pipeline_name and not settings.name:
         event_print(
             type="cli_status",
             level='ERROR',
             msg="Missing pipeline name argument or config. A pipeline name is required for a first-time deployment")
-        return
+        exit(1)
 
     if settings.libraries:
         pass
@@ -355,7 +364,7 @@ def delete(api_client, pipeline_config):
             type="cli_status",
             level='INFO',
             msg="No pipeline ID in settings or no settings found. Nothing to delete.")
-        return
+        exit(1)
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     res = PipelinesApi(api_client).delete(settings.id)
@@ -386,10 +395,11 @@ def start(api_client, as_job, full_refresh, pipeline_config):
             type="cli_status",
             level='INFO',
             msg="No pipeline ID in settings or no settings found. Nothing to start.")
-        return
+        exit(1)
 
     updated_settings = PipelineSettings().from_dict(p_api.get_pipeline_settings(settings.id))
     settings = updated_settings
+    settings.save(output_dir)
 
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
