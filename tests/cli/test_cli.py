@@ -4,7 +4,6 @@ import pytest
 from click import Context, Command
 from click.testing import CliRunner
 from pathlib import Path
-from tests.utils import provide_conf
 import dltctl.cli as cli
 from dltctl.types.pipelines import PipelineSettings
 
