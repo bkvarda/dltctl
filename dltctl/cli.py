@@ -404,6 +404,16 @@ def start(api_client, as_job, full_refresh, pipeline_config):
             msg="No pipeline ID in settings or no settings found. Nothing to start.")
         exit(1)
 
+    # Check to see if the pipeline is already running
+    pipeline = PipelinesApi(api_client).get(settings.id)
+    if pipeline["state"] == 'RUNNING':
+        event_print(
+        type="cli_status",
+        level='ERROR',
+        msg=f"Pipeline {settings.id} is currrently RUNNING. Run dltctl stop to stop or use dltctl deploy")
+        exit(1)
+
+
     updated_settings = PipelineSettings().from_dict(p_api.get_pipeline_settings(settings.id))
     settings = updated_settings
     settings.save(output_dir)
@@ -493,11 +503,11 @@ storage, target, configuration, clusters, force, output_dir):
                 labels.append(c.label)
             except Exception as e:
                 event_print("cli_status", level="ERROR", msg=f"Invalid JSON string for cluster config: {cluster}")
-                return
+                exit(1)
         # Ensure there is only unique labels
         if len(set(labels)) != len(labels):
             event_print("cli_status", level="ERROR", msg=f"Cluster configs have duplicate labels: {labels}")
-            return
+            exit(1)
         
         clusters = cluster_confs
 
