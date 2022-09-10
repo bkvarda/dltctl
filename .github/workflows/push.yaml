@@ -1,4 +1,4 @@
-name: Test
+name: testing
 
 on:
   pull_request:
@@ -41,3 +41,9 @@ jobs:
 
       - name: Run tests
         run: pytest tests --cov=./
+
+      - name: Install from main
+        run: pip install git+https://github.com/bkvarda/dltctl.git
+
+      - name: Run commands
+        run: dltctl --help
