@@ -14,7 +14,8 @@ class AccessConfig:
 
 class JobConfig():
     def __init__(self, name, tasks=None, tags=None, email_notifications=None,
-    max_concurrent_runs=1, format="MULTI_TASK", access_control_list=None):
+    max_concurrent_runs=2, format="MULTI_TASK", access_control_list=None,
+    schedule=None):
         self.name = name
         self.tags = tags
         self.email_notifications = email_notifications
@@ -22,6 +23,7 @@ class JobConfig():
         self.format = format
         self.tasks = None
         self.access_control_list = access_control_list
+        self.schedule = schedule
 
     def set_pipeline_task(self, pipeline_id, full_refresh=False):
         self.tasks = [{
@@ -136,6 +138,13 @@ class PipelineSettings():
             return
         else:
             return None
+
+    def delete_job_id(self):
+        if self.configuration:
+            self.configuration.pop("job_id", None)
+            return
+        else:
+            return
     
     def load(self, directory):
         settings_path  = Path(directory,"pipeline.json").as_posix()

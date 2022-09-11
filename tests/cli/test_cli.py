@@ -150,7 +150,7 @@ def test_start_pipeline_as_job(valid_pipeline_settings, pipelines_api_mock, jobs
     result = runner.invoke(cli.start,["--as-job"] )
     assert "Running non-interactively as a job" in result.stdout
     assert "Created job 1337" in result.stdout
-    assert "Job started: 1337" in result.stdout
+    assert "Run started. Job ID: 1337" in result.stdout
     assert result.exit_code == 0
 
 def test_start_pipeline_as_existing_job(valid_pipeline_settings_job_id, pipelines_api_mock, jobs_api_mock, settings_save_mock):
@@ -159,7 +159,7 @@ def test_start_pipeline_as_existing_job(valid_pipeline_settings_job_id, pipeline
     settings = PipelineSettings().load(path)
     pipelines_api_mock.get_pipeline_settings.return_value = settings.to_json()
     pipelines_api_mock.edit.return_value = ""
-    jobs_api_mock.run_now.return_value = ""
+    jobs_api_mock.run_now.return_value = "12345"
 
     assert settings.get_job_id() == "foo1338"
 
@@ -168,7 +168,26 @@ def test_start_pipeline_as_existing_job(valid_pipeline_settings_job_id, pipeline
     
     assert "Running non-interactively as a job" in result.stdout
     assert "Created job" not in result.stdout
-    assert "Job started: foo1338" in result.stdout
+    assert "Run started. Job ID: foo1338" in result.stdout
+    assert result.exit_code == 0
+
+def test_start_pipeline_as_existing_job_missing_job(valid_pipeline_settings_job_id, pipelines_api_mock, jobs_api_mock, settings_save_mock):
+ 
+    path = str(Path(__file__).parent.parent.resolve()) + '/files/valid_job_id/'
+    settings = PipelineSettings().load(path)
+    pipelines_api_mock.get_pipeline_settings.return_value = settings.to_json()
+    pipelines_api_mock.edit.return_value = ""
+    jobs_api_mock.create_job.return_value = {'job_id': "bar1338"}
+    jobs_api_mock.run_now.side_effect = [Exception("does not exist"), "12345"]
+
+    assert settings.get_job_id() == "foo1338"
+
+    runner = CliRunner()
+    result = runner.invoke(cli.start,["--as-job"] )
+    
+    assert "Running non-interactively as a job" in result.stdout
+    assert "Created job" in result.stdout
+    assert "Run started. Job ID: bar1338" in result.stdout
     assert result.exit_code == 0
 
 def test_stop_pipeline_no_id(valid_pipeline_settings_no_id):

@@ -64,12 +64,29 @@ def _run_as_job(api_client, settings, full_refresh, settings_dir):
               level='INFO',
               msg=f"Starting job {settings.get_job_id()}")
     
-    JobsApi(api_client).run_now(settings.get_job_id(),full_refresh=bool(full_refresh))
-
-    event_print(
+    try:
+        run_id = JobsApi(api_client).run_now(settings.get_job_id(),full_refresh=bool(full_refresh))
+        event_print(
               type="cli_status",
               level='INFO',
-              msg=f"Job started: {settings.get_job_id()}")
+              msg=f"Watching run id: {run_id} to ensure no immediate failures")
+        JobsApi(api_client).ensure_run_start(run_id)
+        event_print(
+             type="cli_status",
+             level='INFO',
+             msg=f"Run started. Job ID: {settings.get_job_id()}, Run ID: {run_id}")
+
+    except Exception as e:
+        # If the job in conf was deleted out of band we can create another
+        if "does not exist" in str(e):
+            event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Job {settings.get_job_id()} from settings does not exist. Creating a new job")
+            settings.delete_job_id()
+            _run_as_job(api_client, settings, full_refresh, settings_dir)
+        else:
+            raise
     
     return
 
@@ -177,7 +194,7 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               level='INFO',
               msg=f"Pipeline {settings.id} is currrently RUNNING. Stopping pipeline.")
               update = PipelinesApi(api_client).stop(settings.id)
-              time.sleep(10)
+              
       # Otherwise it's a new pipeline
       else:
           event_print(
