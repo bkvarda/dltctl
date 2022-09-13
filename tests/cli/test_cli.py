@@ -1,6 +1,7 @@
 from json import JSONDecodeError
 from unittest import mock
 import pytest
+import tempfile, os
 from click import Context, Command
 from click.testing import CliRunner
 from pathlib import Path
@@ -231,3 +232,22 @@ def test_delete_pipeline(valid_pipeline_settings, pipelines_api_mock, settings_s
     result = runner.invoke(cli.delete)
     assert "Pipeline successfully deleted" in result.stdout
     assert result.exit_code == 0
+
+def test_init_config():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        runner = CliRunner()
+        result = runner.invoke(cli.init, args=[
+            "foo", 
+            "-i", "12345", 
+            "-o", f"{tmpdirname}",
+            "-p", "-co"])
+        print(os.listdir(tmpdirname))
+        s = PipelineSettings().load(tmpdirname)
+        assert s.clusters[0]["policy_id"] =="12345"
+        assert s.continuous
+        assert s.photon
+        assert s.development
+        
+
+
+

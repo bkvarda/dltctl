@@ -108,7 +108,7 @@ class PipelineSettings():
     def __init__(self, name = None, libraries = None, 
     edition = 'advanced', target=None, storage=None,
     continuous=False,photon=False, 
-    channel='CURRENT', development_mode=True, id = None, 
+    channel='CURRENT', development=True, id = None, 
     configuration=None, clusters=None, pipeline_files=None):
         self.name = name
         self.libraries = libraries
@@ -118,7 +118,7 @@ class PipelineSettings():
         self.continuous = continuous
         self.photon = photon
         self.channel = channel
-        self.development_mode = development_mode
+        self.development = development
         self.id = id
         self.configuration = configuration
         self.clusters = clusters
@@ -196,7 +196,7 @@ class PipelineSettings():
 
            ],
            "continuous": self.continuous,
-           "development": self.development_mode,
+           "development": self.development,
            "edition": self.edition,
            "photon": self.photon,
            "channel": self.channel

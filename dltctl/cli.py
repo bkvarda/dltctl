@@ -476,17 +476,18 @@ def show(api_client, pipeline_config):
 @click.argument('pipeline_name', type=str, required=True)
 @click.option('-e', '--edition', 'edition', type=str, default="advanced", help="The DLT edition to use")
 @click.option('-ch', '--channel', 'channel', type=str, default="CURRENT", help="The DLT channel to use")
-@click.option('-co', '--continuous', 'continuous', default=False, is_flag=True, help="Whether to use continuous mode or not")
-@click.option('-d', '--development-mode', 'dev_mode', default=True, is_flag=True, help="Whether to use development mode")
-@click.option('-p', '--enable-photon', 'enable_photon', default=False, is_flag=True, help="Enable photon for the cluster")
+@click.option('-co', '--continuous', 'continuous',  is_flag=True, help="Whether to use continuous mode or not")
+@click.option('-pd', '--prod-mode', 'prod_mode', is_flag=True, help="Whether to use development mode")
+@click.option('-p', '--enable-photon', 'enable_photon',is_flag=True, help="Enable photon for the cluster")
 @click.option('-s', '--storage', 'storage', type=str, default=None, help="The default storage location for pipeline events and data")
 @click.option('-t', '--target', 'target', type=str, default=None, help="The target db/schema for the pipeline tables")
+@click.option('-i', '--policy-id', 'policy_id', type=str, default=None, help="The cluster policy ID to use")
 @click.option('-cf','--config','configuration',type=str, default=None, help="Additional configuration JSON string of k/v pairs for Pipeline")
 @click.option('-c', '--cluster', 'clusters', multiple=True, type=str, help="JSON cluster config to use for clusters. Can be specified multiple times with different lables")
 @click.option('-f', '--force', 'force', default=False, is_flag=True, help="Whether to overwrite the existing pipline settings file with these settings, if it exists.")
 @click.option('-o', '--output-dir', 'output_dir', default=None, help="Where to write the pipeline settings config file to. Defaults to current directory.")
-def init(pipeline_name, edition, channel, continuous, dev_mode, enable_photon, 
-storage, target, configuration, clusters, force, output_dir):
+def init(pipeline_name, edition, channel, continuous, prod_mode, enable_photon, 
+storage, target, policy_id, configuration, clusters, force, output_dir):
     """Initializes local pipeline and cluster settings"""
     
     output_dir = output_dir if output_dir else os.getcwd()
@@ -496,19 +497,25 @@ storage, target, configuration, clusters, force, output_dir):
             event_print("cli_status", level="ERROR", msg=f"Settings already exist in {output_path}. Delete or use -f to overwrite")
             return
 
+    dev_mode = False if bool(prod_mode) else True
+
     settings = PipelineSettings(
         name=pipeline_name,
         edition=edition,
         target=target,
         storage=storage,
-        continuous=continuous,
-        photon=enable_photon,
+        continuous=bool(continuous),
+        photon=bool(enable_photon),
         channel=channel,
-        development_mode=dev_mode,
+        development=dev_mode,
         configuration=configuration
     )
 
-    if(len(clusters) < 1):
+    if(len(clusters) < 1 and policy_id):
+       c = ClusterConfig()
+       c.policy_id = policy_id
+       clusters = [c.to_dict()]
+    elif(len(clusters) < 1):
         clusters = None
     else:
         cluster_confs = []
@@ -516,6 +523,8 @@ storage, target, configuration, clusters, force, output_dir):
         for cluster in clusters:
             try:
                 c = ClusterConfig().from_json(cluster)
+                if policy_id:
+                    c.policy_id = policy_id
                 cluster_confs.append(c.to_dict())
                 labels.append(c.label)
             except Exception as e:
@@ -527,8 +536,6 @@ storage, target, configuration, clusters, force, output_dir):
             exit(1)
         
         clusters = cluster_confs
-
-
 
     settings.clusters = clusters
 

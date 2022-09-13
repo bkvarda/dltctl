@@ -131,10 +131,6 @@ class PipelinesApi(PipelinesApi):
         self.client.stop(pipeline_id, headers)
         return
 
-    def update_and_restart_pipeline(self, pipeline_id=None, settings=None):
-        #hi
-        return
-
     def get_events(self, pipeline_id, max_result=100, order_by="timestamp asc", timestamp_filter=None):
         headers = {}
         _data = {}
