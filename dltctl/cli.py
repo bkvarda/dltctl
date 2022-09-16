@@ -90,6 +90,12 @@ def _run_as_job(api_client, settings, full_refresh, settings_dir):
     
     return
 
+def _edit_and_stop_continuous(api_client, settings):
+    """Workaround for pipelines Edit API which starts any continuous update"""
+    if settings.continuous:
+        PipelinesApi(api_client).edit(settings.id, settings)
+        PipelinesApi(api_client).stop_async(settings.id)
+    return
 
 def _get_save_dir(pipeline_config=None):
     if pipeline_config:
@@ -216,7 +222,12 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               type="cli_status",
               level='INFO',
               msg=f"Updating settings for pipeline ID: {settings.id}")
-      PipelinesApi(api_client).edit(settings.id, settings)
+      
+      # Workaround for Pipeline Edit API starting continuous pipelines
+      if settings.continuous:
+          _edit_and_stop_continuous(api_client, settings)
+      else:
+          PipelinesApi(api_client).edit(settings.id, settings)
 
       if(bool(as_job)):
         _run_as_job(api_client=api_client, 
@@ -228,8 +239,8 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
                   type="cli_status",
                   level='INFO',
                   msg=f"Starting pipeline {settings.id}")
-          if not settings.continuous:
-            PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
+         
+          PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
           
           event_print(
                   type="cli_status",
@@ -287,12 +298,18 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     settings.pipeline_files = artifacts
 
     # An edit starts a pipeline for a continuous pipeline which may not be desired.
+
+    event_print(
+        type="cli_status",
+        level="INFO",
+        msg="Updating Pipeline settings"
+    )
     if settings.continuous:
         event_print(
             type="cli_status",
             level='WARNING',
-            msg="The DLT Edit API will start a pipeline when set to continuous. \
-                Artifacts are uploaded but stage will not edit settings for a continuous pipeline. Use dltctl deploy instead.")
+            msg="The DLT Edit API will start a pipeline when set to continuous. Stopping pipeline after edit.")
+        _edit_and_stop_continuous(api_client, settings)
     else:
         pipeline = PipelinesApi(api_client).edit(settings.id, settings)
         
