@@ -228,7 +228,8 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
                   type="cli_status",
                   level='INFO',
                   msg=f"Starting pipeline {settings.id}")
-          PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
+          if not settings.continuous:
+            PipelinesApi(api_client).start_update(settings.id, bool(full_refresh))
           
           event_print(
                   type="cli_status",
@@ -284,7 +285,17 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
 
     artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
     settings.pipeline_files = artifacts
-    pipeline = PipelinesApi(api_client).edit(settings.id, settings)
+
+    # An edit starts a pipeline for a continuous pipeline which may not be desired.
+    if settings.continuous:
+        event_print(
+            type="cli_status",
+            level='WARNING',
+            msg="The DLT Edit API will start a pipeline when set to continuous. \
+                Artifacts are uploaded but stage will not edit settings for a continuous pipeline. Use dltctl deploy instead.")
+    else:
+        pipeline = PipelinesApi(api_client).edit(settings.id, settings)
+        
     settings.save(output_dir)
     
 

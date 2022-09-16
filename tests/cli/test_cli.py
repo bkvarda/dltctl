@@ -19,6 +19,14 @@ def valid_pipeline_settings():
         yield pipeline_settings
 
 @pytest.fixture()
+def valid_pipeline_settings_continuous():
+    with mock.patch('dltctl.cli._get_pipeline_settings') as pipeline_settings:
+        path = str(Path(__file__).parent.parent.resolve()) + '/files/valid_continuous/'
+        settings = PipelineSettings().load(path)
+        pipeline_settings.return_value = settings
+        yield pipeline_settings
+
+@pytest.fixture()
 def valid_pipeline_settings_job_id():
     with mock.patch('dltctl.cli._get_pipeline_settings') as pipeline_settings:
         path = str(Path(__file__).parent.parent.resolve()) + '/files/valid_job_id/'
@@ -218,6 +226,15 @@ def test_stage_pipeline_valid_artifacts(valid_pipeline_settings, pipeline_artifa
     workspace_api_mock.import_workspace.return_value = ""
     runner = CliRunner()
     result = runner.invoke(cli.stage)
+    assert result.exit_code == 0
+
+def test_stage_pipeline_valid_artifacts_continous(valid_pipeline_settings_continuous, pipeline_artifacts, workspace_api_mock, pipelines_api_mock, settings_save_mock):
+    workspace_api_mock.get_default_workspace_path.return_value = "/Users/foo@databricks.com"
+    workspace_api_mock.get_status.return_value = ""
+    workspace_api_mock.import_workspace.return_value = ""
+    runner = CliRunner()
+    result = runner.invoke(cli.stage)
+    assert "The DLT Edit API will start a pipeline when set to continuous" in result.stdout
     assert result.exit_code == 0
 
 def test_delete_pipeline_no_id(valid_pipeline_settings_no_id):
