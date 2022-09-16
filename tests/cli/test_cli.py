@@ -241,12 +241,148 @@ def test_init_config():
             "-i", "12345", 
             "-o", f"{tmpdirname}",
             "-p", "-co"])
-        print(os.listdir(tmpdirname))
         s = PipelineSettings().load(tmpdirname)
         assert s.clusters[0]["policy_id"] =="12345"
         assert s.continuous
         assert s.photon
         assert s.development
+
+def test_init_config_clusters():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        runner = CliRunner()
+        cluster_def = """{
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+        result = runner.invoke(cli.init, args=[
+            "foo", 
+            "-i", "12345", 
+            "-o", f"{tmpdirname}",
+            "-c", f"{cluster_def}"])
+        s = PipelineSettings().load(tmpdirname)
+        assert s.clusters[0]["policy_id"] =="12345"
+        assert s.clusters[0]["init_script"]["dbfs"]["location"] == "dbfs:/foo/bar.sh"
+
+def test_init_config_multiple_clusters():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        runner = CliRunner()
+        cluster_def = """{
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+        other_cluster_def = """{
+            "label": "maintenance",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+        result = runner.invoke(cli.init, args=[
+            "foo", 
+            "-i", "12345", 
+            "-o", f"{tmpdirname}",
+            "-c", f"{cluster_def}",
+            "-c", f"{other_cluster_def}" ])
+        s = PipelineSettings().load(tmpdirname)
+        assert len(s.clusters) == 2
+        assert s.clusters[0]["label"] == "default"
+        assert s.clusters[1]["label"] == "maintenance"
+
+def test_init_config_multiple_clusters_same_label():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        runner = CliRunner()
+        cluster_def = """{
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+        other_cluster_def = """{
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            },
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+        result = runner.invoke(cli.init, args=[
+            "foo", 
+            "-i", "12345", 
+            "-o", f"{tmpdirname}",
+            "-c", f"{cluster_def}",
+            "-c", f"{other_cluster_def}" ])
+        
+        assert "Cluster configs have duplicate labels" in result.stdout
+        assert result.exit_code == 1
+
+def test_init_invalid_cluster_conf():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        runner = CliRunner()
+        cluster_def = """{
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5,,,
+            ,
+            "driver_node_type_id": "c5.4xlarge",
+            "node_type_id": "c5.4xlarge",
+            "init_script": {
+                "dbfs": {
+                    "location": "dbfs:/foo/bar.sh"
+                }
+            }
+        }"""
+       
+        result = runner.invoke(cli.init, args=[
+            "foo", 
+            "-i", "12345", 
+            "-o", f"{tmpdirname}",
+            "-c", f"{cluster_def}"])
+        
+        assert "Invalid JSON string for cluster config" in result.stdout
+        assert result.exit_code == 1
+    
         
 
 
