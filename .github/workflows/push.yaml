@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - '2.7'
+          - '3.10'
           - '3.6'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
