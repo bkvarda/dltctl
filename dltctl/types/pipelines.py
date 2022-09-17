@@ -2,15 +2,18 @@ import json
 from pathlib import Path
 
 class AccessConfig:
-    def __init__(self, manager_groups=None, reader_groups=None):
+    def __init__(self, manager_groups=None, reader_groups=None, notification_group=None):
         self.manager_groups = manager_groups
         self.reader_groups = reader_groups
+        self.notification_group = notification_group
 
-    def from_dict():
-        return
+    def from_dict(self):
+        for k, v in dict.items():
+                setattr(self, k, v)
+        return self
 
-    def to_dict():
-        return
+    def to_dict(self):
+        return self.__dict__
 
 class JobConfig():
     def __init__(self, name, tasks=None, tags=None, email_notifications=None,
@@ -56,8 +59,7 @@ class ClusterConfig():
     driver_node_type_id="c5.4xlarge", node_type_id="c5.4xlarge", 
     policy_id=None, aws_attributes=None, spark_conf=None, 
     spark_env_vars=None, init_script=None, cluster_log_conf=None,
-    autoscale=None,custom_tags=None,
-    cluster_name=None):
+    autoscale=None, custom_tags=None, cluster_name=None):
         self.label = label
         self.num_workers = num_workers
         self.autoscale = autoscale
@@ -123,6 +125,82 @@ class PipelineSettings():
         self.configuration = configuration
         self.clusters = clusters
         self.pipeline_files = pipeline_files
+
+    def get_access_config(self):
+        return AccessConfig(
+            manager_groups=self.get_manager_groups(),
+            reader_groups=self.get_reader_groups(),
+            notification_group=self.get_notification_group()
+        )
+    
+    def set_access_config(self, reader_groups=None, manager_groups=None, notification_group=None):
+        self.set_reader_groups(reader_groups)
+        self.set_manager_groups(manager_groups)
+        self.set_notification_group(notification_group)
+        return
+    
+    def get_reader_groups(self):
+        if self.configuration:
+            if "reader_groups" in self.configuration:
+                return self.configuration["reader_groups"].replace(" ","").split(",")
+            return
+        else:
+            return None
+
+    def get_manager_groups(self):
+        if self.configuration:
+            if "manager_groups" in self.configuration:
+                return self.configuration["manager_groups"].replace(" ","").split(",")
+            return
+        else:
+            return None
+
+    def get_notification_group(self):
+        if self.configuration:
+            if "notification_group" in self.configuration:
+                return self.configuration["notification_group"]
+            return
+        else:
+            return None
+
+    def set_reader_groups(self, groups):
+        if not groups:
+            return
+        elif type(groups) is not list:
+            raise TypeError(f"Invalid argument. Groups needs to be a list, received: {groups}")
+
+        if self.configuration:
+            self.configuration["reader_groups"] = ','.join(groups)
+            return
+        else:
+            self.configuration = {"reader_groups": ','.join(groups)}
+            return
+
+    def set_manager_groups(self, groups):
+        if not groups:
+            return
+        elif type(groups) is not list:
+            raise TypeError(f"Invalid argument. Groups needs to be a list, received: {groups}")
+
+        if self.configuration:
+            self.configuration["manager_groups"] = ','.join(groups)
+            return
+        else:
+            self.configuration = {"manager_groups": ','.join(groups)}
+            return
+    
+    def set_notification_group(self, group):
+        if not group:
+            return
+        elif type(group) is not str:
+            raise TypeError(f"Invalid argument. Group needs to be a string, received: {group}")
+
+        if self.configuration:
+            self.configuration["notification_group"] = group
+            return
+        else:
+            self.configuration = {"notification_group": group}
+            return
 
     def set_job_id(self, job_id):
         if self.configuration:

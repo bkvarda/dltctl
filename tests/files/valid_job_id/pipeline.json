@@ -37,7 +37,10 @@
         "starting_offsets": "earliest",
         "typea": "{\"foo\": \"baz\"}",
         "pipelines.tableManagedByMultiplePipelinesCheck.enabled": "false",
-        "job_id": "foo1338"
+        "job_id": "foo1338",
+        "reader_groups": "foo@bar.com, bar@baz.com",
+        "manager_groups": "baz@foo.com",
+        "notification_group": "some@one.com"
     },
     "storage": "dbfs:/pipelines/some-id",
     "id": "some-id",
