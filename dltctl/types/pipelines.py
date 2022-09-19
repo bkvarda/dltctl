@@ -133,9 +133,9 @@ class PipelineSettings():
             notification_group=self.get_notification_group()
         )
     
-    def set_access_config(self, reader_groups=None, manager_groups=None, notification_group=None):
-        self.set_reader_groups(reader_groups)
-        self.set_manager_groups(manager_groups)
+    def set_access_config(self, acl_list, notification_group=None):
+        self.set_reader_groups(acl_list.group_viewers)
+        self.set_manager_groups(acl_list.group_managers)
         self.set_notification_group(notification_group)
         return
     

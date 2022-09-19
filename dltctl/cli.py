@@ -9,11 +9,13 @@ from databricks_cli.configure.cli import configure_cli
 from databricks_cli.utils import pipelines_exception_eater
 from dltctl.api.pipelines import PipelinesApi
 from dltctl.api.workspace import WorkspaceApi
+from dltctl.api.permissions import PermissionsApi
 from dltctl.api.jobs import JobsApi
 from dltctl.types.pipelines import PipelineSettings, ClusterConfig, JobConfig
 from dltctl.types.events import PipelineEventsResponse
 from dltctl.api.warehouses import DBSQLClient
 from dltctl.utils.print_utils import event_print
+from dltctl.types.permissions import AclList
 
 pipeline_name_help = "Name of DLT pipeline"
 workspace_path_help = "Full workspace path to use for dlt pipeline file uploads"
@@ -523,7 +525,7 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
         output_path = Path(output_dir, 'pipeline.json').as_posix()
         if os.path.exists(output_path):
             event_print("cli_status", level="ERROR", msg=f"Settings already exist in {output_path}. Delete or use -f to overwrite")
-            return
+            exit(1)
 
     dev_mode = False if bool(prod_mode) else True
 
@@ -569,9 +571,6 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
 
     settings.save(output_dir)
 
-   
-
-
 @cli.command()
 @debug_option
 @profile_option
@@ -579,9 +578,7 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
 @provide_api_client
 def test(api_client):
     settings = _get_pipeline_settings()
-    default_path = WorkspaceApi(api_client).get_default_workspace_path()
-    print(default_path)
-
+    #TODO
 
 @cli.command()
 @debug_option

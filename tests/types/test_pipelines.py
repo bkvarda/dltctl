@@ -7,6 +7,7 @@ import pytest
 
 from dltctl.types.pipelines import PipelineSettings
 from dltctl.types.pipelines import ClusterConfig
+from dltctl.types.permissions import AclList
 
 class TestPipelineSettings(unittest.TestCase):
     def test_pipeline_settings_from_json(self):
@@ -142,9 +143,11 @@ class TestPipelineSettings(unittest.TestCase):
 
     def test_set_get_access_configs(self):
       settings = PipelineSettings()
+      acl_list = AclList()
+      acl_list.group_managers=["cool@person.com"]
+      acl_list.group_viewers=["foo@bar.com","bar@foo.com"]
       settings.set_access_config(
-        reader_groups=["foo@bar.com","bar@foo.com"],
-        manager_groups=["cool@person.com"],
+        acl_list,
         notification_group="me@me.com")
 
       acfg = settings.get_access_config()
