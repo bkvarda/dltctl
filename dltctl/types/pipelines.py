@@ -7,6 +7,12 @@ class AccessConfig:
         self.reader_groups = reader_groups
         self.notification_group = notification_group
 
+    def has_acls(self):
+        if self.manager_groups or self.reader_groups:
+            return True
+        else:
+            return False
+
     def from_dict(self):
         for k, v in dict.items():
                 setattr(self, k, v)
@@ -125,6 +131,10 @@ class PipelineSettings():
         self.configuration = configuration
         self.clusters = clusters
         self.pipeline_files = pipeline_files
+    
+    def has_access_config(self):
+        acfg = self.get_access_config()
+        return acfg.has_acls()
 
     def get_access_config(self):
         return AccessConfig(
@@ -142,18 +152,18 @@ class PipelineSettings():
     def get_reader_groups(self):
         if self.configuration:
             if "reader_groups" in self.configuration:
-                return self.configuration["reader_groups"].replace(" ","").split(",")
-            return
-        else:
-            return None
+                readers = self.configuration["reader_groups"].replace(" ","").split(",")
+                if len(readers[0]) > 0:
+                    return readers
+        return None
 
     def get_manager_groups(self):
         if self.configuration:
             if "manager_groups" in self.configuration:
-                return self.configuration["manager_groups"].replace(" ","").split(",")
-            return
-        else:
-            return None
+                mgrs = self.configuration["manager_groups"].replace(" ","").split(",")
+                if len(mgrs[0]) > 0:
+                    return mgrs
+        return None
 
     def get_notification_group(self):
         if self.configuration:

@@ -161,6 +161,19 @@ class TestPipelineSettings(unittest.TestCase):
       assert settings.configuration["manager_groups"] == "cool@person.com"
       assert settings.configuration["reader_groups"] == "foo@bar.com,bar@foo.com"
       assert settings.configuration["notification_group"] == "me@me.com"
+
+    def test_set_get_access_configs(self):
+        settings = PipelineSettings()
+        acl_list = AclList()
+        acl_list.group_managers=[" "]
+        acl_list.group_viewers=["",""]
+        settings.set_access_config(
+          acl_list,
+          notification_group="me@me.com")
+      
+        acfg = settings.get_access_config()
+        assert acfg.has_acls() == False
+
     
 
 
