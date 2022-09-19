@@ -96,7 +96,7 @@ def _edit_and_stop_continuous(api_client, settings):
     """Workaround for pipelines Edit API which starts any continuous update"""
     if settings.continuous:
         PipelinesApi(api_client).edit(settings.id, settings)
-        PipelinesApi(api_client).stop_async(settings.id)
+        PipelinesApi(api_client).stop(settings.id)
     return
 
 def _get_save_dir(pipeline_config=None):
