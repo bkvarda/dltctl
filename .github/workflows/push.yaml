@@ -3,7 +3,6 @@ name: testing
 on:
   pull_request:
   push:
-    branches: [main]
 
 jobs:
   test:
@@ -40,10 +39,10 @@ jobs:
         run: pip freeze
 
       - name: Run tests
-        run: pytest tests --cov=./
-
-      - name: Install from main
-        run: pip install git+https://github.com/bkvarda/dltctl.git
+        run: pytest tests --cov=./h
+      
+      - name: Install from branch
+        run: pip install git+https://github.com/bkvarda/dltctl.git@${GITHUB_REF##*/}
 
       - name: Run commands
         run: dltctl --help
