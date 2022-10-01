@@ -58,6 +58,30 @@ def settings_save_mock():
         yield _settings_save_mock
 
 @pytest.fixture()
+def artifact_diffs():
+    with mock.patch('dltctl.cli._get_artifact_diffs') as artifact_diffs:
+        artifact_diffs.return_value = {"keep": [], 
+        "upload": ["foo.py","bar.sql"], 
+        "delete": []}
+        yield artifact_diffs
+
+@pytest.fixture()
+def artifact_diffs_delete_only():
+    with mock.patch('dltctl.cli._get_artifact_diffs') as artifact_diffs:
+        artifact_diffs.return_value = {"keep": ["bar.py"], 
+        "upload": [], 
+        "delete": ["foo.py"]}
+        yield artifact_diffs
+
+@pytest.fixture()
+def no_local_artifact_diffs():
+    with mock.patch('dltctl.cli._get_artifact_diffs') as artifact_diffs:
+        artifact_diffs.return_value = {"keep": ["bar.py"], 
+        "upload": [], 
+        "delete": []}
+        yield artifact_diffs
+
+@pytest.fixture()
 def pipeline_artifacts():
     with mock.patch('dltctl.cli._get_dlt_artifacts') as pipeline_artifacts:
         pipeline_artifacts.return_value = ["foo.py","bar.sql"]
@@ -220,7 +244,7 @@ def test_stage_pipeline_no_artifacts(valid_pipeline_settings, no_pipeline_artifa
     assert "Unable to detect pipeline files" in result.stdout
     assert result.exit_code == 1
 
-def test_stage_pipeline_valid_artifacts(valid_pipeline_settings, pipeline_artifacts, workspace_api_mock, pipelines_api_mock, settings_save_mock):
+def test_stage_pipeline_valid_artifacts(valid_pipeline_settings, pipeline_artifacts, artifact_diffs, workspace_api_mock, pipelines_api_mock, settings_save_mock):
     workspace_api_mock.get_default_workspace_path.return_value = "/Users/foo@databricks.com"
     workspace_api_mock.get_status.return_value = ""
     workspace_api_mock.import_workspace.return_value = ""
@@ -228,7 +252,7 @@ def test_stage_pipeline_valid_artifacts(valid_pipeline_settings, pipeline_artifa
     result = runner.invoke(cli.stage)
     assert result.exit_code == 0
 
-def test_stage_pipeline_valid_artifacts_continous(valid_pipeline_settings_continuous, pipeline_artifacts, workspace_api_mock, pipelines_api_mock, settings_save_mock):
+def test_stage_pipeline_valid_artifacts_continous(valid_pipeline_settings_continuous, pipeline_artifacts, artifact_diffs, workspace_api_mock, pipelines_api_mock, settings_save_mock):
     workspace_api_mock.get_default_workspace_path.return_value = "/Users/foo@databricks.com"
     workspace_api_mock.get_status.return_value = ""
     workspace_api_mock.import_workspace.return_value = ""

@@ -55,6 +55,16 @@ class PipelinesApi(PipelinesApi):
         pipeline = self.get(pipeline_id)
         return pipeline["state"]
 
+    def get_pipeline_libraries(self, pipeline_id):
+        libs = []
+        pipeline = self.get(pipeline_id)
+        libraries = pipeline["spec"]["libraries"]
+        for library in libraries:
+            libs.append(library["notebook"]["path"])
+        return libs
+        
+
+
 
     def stream_events(self, pipeline_id, ts=None, polling_interval=3, max_polls_without_events=None, verbose=False):
         start_time = ts

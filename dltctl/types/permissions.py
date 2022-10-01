@@ -108,10 +108,12 @@ class AclList:
         readers = access_config.reader_groups
         group_managers = []
         group_viewers = []
-        for group in mgrs:
-            group_managers.append({"group_name": group, "permission_level": 'CAN_MANAGE'})
-        for group in readers:
-            group_viewers.append({"group_name": group, "permission_level": 'CAN_VIEW'})
+        if mgrs:
+            for group in mgrs:
+                group_managers.append({"group_name": group, "permission_level": 'CAN_MANAGE'})
+        if readers:
+            for group in readers:
+                group_viewers.append({"group_name": group, "permission_level": 'CAN_VIEW'})
         self.group_viewers = group_viewers
         self.group_managers = group_managers
         return self

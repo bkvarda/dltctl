@@ -2,7 +2,7 @@
 from email.policy import default
 from threading import local
 import click
-import os, datetime, json, time, sys
+import os, datetime, json, time, sys, base64, hashlib, difflib, copy
 from pathlib import Path
 from databricks_cli.configure.config import provide_api_client, profile_option, debug_option
 from databricks_cli.configure.cli import configure_cli
@@ -24,6 +24,23 @@ verbose_events_help = "Will print more verbose DLT event logs to the console"
 pipeline_config_help = "Directory containing config named pipeline.json. If not specified, will look in local directory for pipeline.json"
 full_refresh_help = "Whether to execute a full refresh of the pipeline"
 as_job_help = "(experimental) Whether to run as a Databricks job non-interactively"
+
+def _set_acls(api_client, settings):
+    
+    if not settings.has_access_config():
+        return
+
+    access_cfg = settings.get_access_config()
+    acls = AclList().from_access_config(access_cfg)
+    current_acls = PermissionsApi(api_client).get_pipeline_permissions(settings.id)
+    owner_info = AclList().from_arr(current_acls)
+    acls.add(owner_info.owner_type, owner_info.owner,'IS_OWNER')
+
+    if settings.get_job_id():
+        # Set job ACLs
+        print()
+
+    PermissionsApi(api_client).set_pipeline_permissions(settings.id, acls.to_arr())
 
 def _create_or_update_job(api_client, settings, full_refresh):
     # If job doesn't exist create one
@@ -122,6 +139,29 @@ def _get_pipeline_settings(pipeline_config=None):
         pass
     return settings
 
+def _is_settings_diff(api_client, settings):
+    remote_settings = PipelineSettings().from_dict(PipelinesApi(api_client).get_pipeline_settings(settings.id))
+    r = copy.deepcopy(remote_settings)
+    s = copy.deepcopy(settings)
+    # Don't compare libraries or pipeline files, we're concerned about the core settings
+    r.libraries = None
+    r.pipeline_files = None
+    s.libraries = None
+    s.pipeline_files = None
+    settings_diff = not r.to_json() == s.to_json()
+    if settings_diff:
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Diff in pipeline settings found")
+    else:
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"No diff in pipeline settings found")
+    return settings_diff
+
+
 def _get_dlt_artifacts(pipeline_files=None):   
     current_dir = os.getcwd()
     all_files = os.listdir(current_dir)
@@ -141,6 +181,82 @@ def _get_dlt_artifacts(pipeline_files=None):
         return None
         
     return pipeline_files
+
+def _get_artifact_diffs(api_client, settings, artifacts):
+    # This is a new pipeline, no need to look for diffs
+    if not settings.id:
+        return artifacts
+    
+    event_print(
+            type="cli_status",
+            level="INFO",
+            msg="Checking for artifact diffs"
+        )
+
+    libs = PipelinesApi(api_client).get_pipeline_libraries(settings.id)
+    remote_md5s = []
+    local_md5s = []
+    remote_md5_lookup = {}
+    local_md5_lookup = {}
+    for l in libs:
+        content = WorkspaceApi(api_client).get_workspace_file_b64(l)
+        decoded = base64.b64decode(content).decode("utf-8")
+        first_nl = decoded.find('\n') + 1
+        clean_str = decoded[first_nl:len(decoded)]
+        clean_str = "".join([s for s in clean_str.splitlines(True) if s.strip()])
+        md5_hash = hashlib.md5(clean_str.encode('utf-8')).hexdigest()
+        remote_md5s.append(md5_hash)
+        remote_md5_lookup[md5_hash] = l
+    for a in artifacts:
+        with open(a) as f:
+            content = f.read()
+            content = "".join([s for s in content.splitlines(True) if s.strip()])
+            md5_hash =hashlib.md5(content.encode('utf-8')).hexdigest()
+            local_md5s.append(md5_hash)
+            local_md5_lookup[md5_hash] = a
+ 
+   
+    keeps = set(remote_md5s).intersection(set(local_md5s))
+    diffs = set(local_md5s) - set(remote_md5s)
+    deletes = set(remote_md5s) - set(local_md5s)
+    artifacts_to_keep = []
+    artifacts_to_upload = []
+    artifacts_to_delete = []
+
+    for checksum in deletes:
+        event_print(
+        type="cli_status",
+        level="INFO",
+        msg=f"Remote {remote_md5_lookup[checksum]} will be de-referenced by pipeline or replaced by updated changes."
+        )
+        artifacts_to_delete.append(remote_md5_lookup[checksum])
+
+    for checksum in keeps:
+        event_print(
+        type="cli_status",
+        level="INFO",
+        msg=f"Keeping: {remote_md5_lookup[checksum]}"
+        )
+        artifacts_to_keep.append(remote_md5_lookup[checksum])
+
+    for checksum in diffs:
+        event_print(
+        type="cli_status",
+        level="INFO",
+        msg=f"Found diffs in: {local_md5_lookup[checksum]}"
+        )
+        artifacts_to_upload.append(local_md5_lookup[checksum])
+    
+    if len(diffs) == 0:
+        event_print(
+        type="cli_status",
+        level="INFO",
+        msg=f"No artifact diffs found. Nothing to upload."
+        )
+
+    ret = {"keep": artifacts_to_keep, "upload": artifacts_to_upload, "delete": artifacts_to_delete}
+    return ret
+
 
 
 
@@ -188,10 +304,22 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
     if not workspace_path:
         workspace_path = WorkspaceApi(api_client).get_default_workspace_path()
 
+    pipeline_files_diffs = _get_artifact_diffs(api_client, settings, pipeline_files)
+
     try:
-      artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
-      settings.pipeline_files = artifacts
-      json_settings = settings.to_json()
+      if len(pipeline_files_diffs["upload"]) > 0 or len(pipeline_files_diffs["delete"]) > 0 or _is_settings_diff(api_client, settings):
+          artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
+          settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
+          json_settings = settings.to_json()
+
+      else:
+        event_print(
+            type="cli_status",
+            level="INFO",
+            msg="No changes detected. Nothing new to deploy."
+        )
+        return
+      
       
       # If there's a pipeline id, it's an update
       if(settings.id):
@@ -224,6 +352,8 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               type="cli_status",
               level='INFO',
               msg=f"Updating settings for pipeline ID: {settings.id}")
+
+      _set_acls(api_client, settings)
       
       # Workaround for Pipeline Edit API starting continuous pipelines
       if settings.continuous:
@@ -282,7 +412,7 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
         event_print(
             type="cli_status",
             level='INFO',
-            msg="No pipeline ID in settings or no settings found. Nothing to stop.")
+            msg="No pipeline ID in settings or no settings found. Nothing to stage.")
         exit(1)
 
     if not pipeline_files:
@@ -295,27 +425,30 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     if not workspace_path:
         workspace_path = WorkspaceApi(api_client).get_default_workspace_path()
     
+    pipeline_files_diffs = _get_artifact_diffs(api_client, settings, pipeline_files)
 
-    artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files,workspace_path)
-    settings.pipeline_files = artifacts
+    if(len(pipeline_files_diffs["upload"]) > 0) or len(pipeline_files_diffs["delete"]) > 0 or _is_settings_diff(api_client, settings):
+        artifacts = WorkspaceApi(api_client).upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
+        settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
 
-    # An edit starts a pipeline for a continuous pipeline which may not be desired.
-
-    event_print(
-        type="cli_status",
-        level="INFO",
-        msg="Updating Pipeline settings"
-    )
-    if settings.continuous:
+        # An edit starts a pipeline for a continuous pipeline which may not be desired.
+    
         event_print(
             type="cli_status",
-            level='WARNING',
-            msg="The DLT Edit API will start a pipeline when set to continuous. Stopping pipeline after edit.")
-        _edit_and_stop_continuous(api_client, settings)
-    else:
-        pipeline = PipelinesApi(api_client).edit(settings.id, settings)
-        
-    settings.save(output_dir)
+            level="INFO",
+            msg="Updating Pipeline settings"
+        )
+        if settings.continuous:
+            event_print(
+                type="cli_status",
+                level='WARNING',
+                msg="The DLT Edit API will start a pipeline when set to continuous. Stopping pipeline after edit.")
+            _edit_and_stop_continuous(api_client, settings)
+        else:
+            pipeline = PipelinesApi(api_client).edit(settings.id, settings)
+            _set_acls(api_client, settings)
+            
+        settings.save(output_dir)
     
 
 @cli.command()
@@ -399,6 +532,7 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
     event_print("cli_status", level="INFO", msg=f"Creating pipeline named: {settings.name}")
     json_settings = settings.to_json()
     pipeline = PipelinesApi(api_client).create(settings=json_settings)
+    _set_acls(api_client, settings)
     settings = PipelineSettings().from_dict(PipelinesApi(api_client).get_pipeline_settings(pipeline["pipeline_id"]))
     settings.save(output_dir)
 
@@ -578,7 +712,14 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
 @provide_api_client
 def test(api_client):
     settings = _get_pipeline_settings()
-    #TODO
+    artifacts = _get_dlt_artifacts()
+    print(_get_artifact_diffs(api_client, settings, artifacts))
+    print(_is_settings_diff(api_client, settings))
+    return
+    #print(artifacts)
+    #print(settings.has_access_config())
+    #_set_acls(api_client, settings)
+
 
 @cli.command()
 @debug_option
