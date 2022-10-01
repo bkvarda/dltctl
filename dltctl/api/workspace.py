@@ -1,10 +1,18 @@
 from pathlib import Path
 from databricks_cli.pipelines.api import PipelinesApi
 from databricks_cli.workspace.api import WorkspaceApi
-from databricks_cli.workspace.types import WorkspaceLanguage
+from databricks_cli.workspace.types import WorkspaceLanguage, WorkspaceFormat
 from dltctl.utils.print_utils import event_print
 
 class WorkspaceApi(WorkspaceApi):
+
+    def get_workspace_file_b64(self, path):
+      try:
+          response = self.client.export_workspace(path, WorkspaceFormat.SOURCE)
+          return response['content']
+      except:
+        raise
+
 
     def get_default_workspace_path(self):
       response = self.client.client.perform_query(
@@ -13,7 +21,6 @@ class WorkspaceApi(WorkspaceApi):
       default_path = Path('/Users',f'{user_name}/').as_posix()
       return default_path
 
-    
     def upload_pipeline_artifacts(self, artifacts, workspace_destination, print_event=True):
         # Check that workspace destination exists or not
         uploaded_workspace_paths = []
