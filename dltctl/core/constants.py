@@ -1,0 +1,7 @@
+PIPELINE_NAME_HELP = "Name of DLT pipeline"
+WORKSPACE_PATH_HELP = "Full workspace path to use for dlt pipeline file uploads"
+PIPELINE_FILES_HELP = "Comma-delimited list of files that make up your DLT pipeline code and will be uploaded."
+VERBOSE_EVENTS_HELP = "Will print more verbose DLT event logs to the console"
+PIPELINE_CONFIG_HELP = "Directory containing config named pipeline.json. If not specified, will look in local directory for pipeline.json"
+FULL_REFRESH_HELP = "Whether to execute a full refresh of the pipeline"
+AS_JOB_HELP = "(experimental) Whether to run as a Databricks job non-interactively"

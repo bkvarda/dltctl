@@ -13,16 +13,24 @@ class AccessConfig:
         else:
             return False
 
-    def from_dict(self):
-        for k, v in dict.items():
+    def from_dict(self, acfg_dict):
+        for k, v in acfg_dict.items():
                 setattr(self, k, v)
         return self
 
     def to_dict(self):
-        return self.__dict__
+        base_dict = self.__dict__
+        acl_conf_dict = {}
+        for k, v in base_dict.items():
+            if v is None:
+                pass
+            else:
+                acl_conf_dict[k] = v
+              
+        return acl_conf_dict
 
 class JobConfig():
-    def __init__(self, name, tasks=None, tags=None, email_notifications=None,
+    def __init__(self, name=None, tasks=None, tags=None, email_notifications=None,
     max_concurrent_runs=2, format="MULTI_TASK", access_control_list=None,
     schedule=None):
         self.name = name
@@ -41,9 +49,9 @@ class JobConfig():
             "pipeline_task":{"pipeline_id": pipeline_id, "full_refresh": full_refresh}
             }]
 
-    def from_dict(self):
+    def from_dict(self, jobcfg_dict):
         try:
-            for k, v in dict.items():
+            for k, v in jobcfg_dict.items():
                 setattr(self, k, v)
         except Exception as e:
             raise
@@ -114,7 +122,7 @@ class ClusterConfig():
 
 class PipelineSettings():
     def __init__(self, name = None, libraries = None, 
-    edition = 'advanced', target=None, storage=None,
+    edition = 'advanced', target="default", storage=None,
     continuous=False,photon=False, 
     channel='CURRENT', development=True, id = None, 
     configuration=None, clusters=None, pipeline_files=None):
@@ -247,7 +255,7 @@ class PipelineSettings():
         settings_path  = Path(directory,"pipeline.json").as_posix()
         try:
             with open(settings_path, 'w') as f:
-                json.dump(self.to_json(), f, indent=4)
+                json.dump(self.to_json(omit_libraries=True, omit_id=True), f, indent=4)
             
             return
         except Exception as e:
@@ -275,7 +283,7 @@ class PipelineSettings():
             raise
         return self
 
-    def to_json(self):
+    def to_json(self, omit_libraries=False, omit_id=False):
         json_body = {
            "libraries": [
 
@@ -297,7 +305,7 @@ class PipelineSettings():
         if self.target:
             json_body["target"] = self.target
         
-        if self.id:
+        if self.id and not omit_id:
             json_body["id"] = self.id
         
         if self.name:
@@ -318,5 +326,8 @@ class PipelineSettings():
             for c in self.clusters:
                 cluster = ClusterConfig().from_dict(c)
                 json_body["clusters"].append(cluster.to_dict())
+
+        if omit_libraries:
+            json_body.pop("libraries",None)
         
         return json_body

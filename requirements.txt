@@ -7,3 +7,4 @@ pyarrow
 tabulate
 pytest-cov
 decorator
+pyyaml

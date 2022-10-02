@@ -1,0 +1,25 @@
+access_config:
+  manager_groups:
+  - foo@foo.com
+  - bar@bar.com
+databricks_cluster_policy_id: 12345
+databricks_url: http://foo.com
+job_config:
+  format: MULTI_TASK
+  max_concurrent_runs: 2
+  name: test_name
+pipeline_settings:
+  name: mycoolname
+  channel: CURRENT
+  clusters:
+  - autoscale:
+      max_workers: 5
+      min_workers: 1
+    driver_node_type_id: c5.4xlarge
+    label: default
+    node_type_id: c5.4xlarge
+  continuous: false
+  development: true
+  edition: advanced
+  photon: false
+  target: default
