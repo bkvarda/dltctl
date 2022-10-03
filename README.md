@@ -4,7 +4,7 @@ A CLI tool for fast local iteration on Delta Live Tables pipelines and rapid dep
 
 #### Installation
 ```
-pip install git+https://github.com/bkvarda/dltctl.git@refactor
+pip install git+https://github.com/bkvarda/dltctl.git
 ```
 
 #### First-time Configuration
@@ -40,7 +40,8 @@ This is a minimally viable dlt project yaml file. For more advanced settings, ed
 ```
 dltctl init mypipeline -f -c '{"label":"default", "aws_attributes": {"instance_profile_arn":"myprofilearn"}}'
 ```
-Now you just need to bring your own DLT pipeline. Or if you just want to get started, you can try this:
+Now you just need to bring your own DLT pipeline.  
+Or if you just want to get started, you can try this:
 ```
 echo "CREATE LIVE TABLE $(whoami | sed 's/\.//g')_dltctl_quickstart AS SELECT 1" > test.sql
 ```
