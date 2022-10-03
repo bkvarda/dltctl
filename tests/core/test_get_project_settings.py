@@ -39,9 +39,9 @@ class TestCliPipelineSettings(unittest.TestCase):
                 path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
                 cwd_mock.return_value = path
                 os_mock.return_value = True
-                self.assertRaises(YAMLError, lambda: get_project_settings(None))
+                self.assertRaises(Exception, lambda: get_project_settings(None))
 
 
     def test_invalid_specified_settings(self):
         path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
-        self.assertRaises(YAMLError, lambda: get_project_settings(path))
+        self.assertRaises(Exception, lambda: get_project_settings(path))

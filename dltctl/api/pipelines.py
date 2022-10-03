@@ -26,8 +26,7 @@ class PipelinesApi(PipelinesApi):
         if(len(pipelines_with_name) < 1):
             return None
         elif (len(pipelines_with_name) > 1):
-            raise PipelineNameNotUniqueError("Unable to get pipeline by name: Multiple pipelines with the same name." /
-            + "dltctl does not support this. Pipelines:" + str(pipelines_with_name))
+            raise PipelineNameNotUniqueError(f"Unable to get pipeline by name: Multiple pipelines with the same name: {pipelines_with_name} ")
         else:
             return pipelines_with_name[0]["pipeline_id"]
 

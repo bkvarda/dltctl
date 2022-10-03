@@ -150,14 +150,17 @@ def get_project_settings(settings_dir=None):
     current_dir = os.getcwd()
     local_settings_path = current_dir + '/dltctl.yaml'
     #  Use another pipeline settings if defined
-    if settings_dir:
-        return ProjectConfig().load(settings_dir)
-    #  Try to load a pipeline settings if in current directory
-    elif os.path.exists(local_settings_path):
-        return ProjectConfig().load(current_dir)
-    # Otherwise raise exception
-    else:
-        raise Exception("No dltctl.yaml found. Use dltctl init if you haven't created one yet.")
+    try:
+       if settings_dir:
+           return ProjectConfig().load(settings_dir)
+       #  Try to load a pipeline settings if in current directory
+       elif os.path.exists(local_settings_path):
+           return ProjectConfig().load(current_dir)
+       # Otherwise raise exception
+       else:
+           raise Exception("No dltctl.yaml found. Use dltctl init if you haven't created one yet.")
+    except Exception as e:
+        raise Exception(f"Project config YAML parsing error: {e}")
     
 def is_job_conf_diff(api_client, job_conf, job_id):
     remote_settings = JobConfig().from_dict(JobsApi(api_client).get_job(job_id)["settings"])

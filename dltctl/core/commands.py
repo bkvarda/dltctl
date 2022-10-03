@@ -10,10 +10,17 @@ import datetime
 
 def create(api_client, proj_config_dir, workspace_path, pipeline_files_dir):
     """Creates a pipeline with the specified configuration."""
-    proj_settings = get_project_settings(proj_config_dir)
-    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
-    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
-    settings = proj_settings.pipeline_settings
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+        workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+        settings = proj_settings.pipeline_settings
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     workspace_api = WorkspaceApi(api_client)
     pipelines_api = PipelinesApi(api_client)
 
@@ -57,13 +64,20 @@ def create(api_client, proj_config_dir, workspace_path, pipeline_files_dir):
 
 def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
-    proj_settings = get_project_settings(proj_config_dir)
-    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
-    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
-    settings = proj_settings.pipeline_settings
-    pipeline_files = get_dlt_artifacts(pipeline_files_dir)
-    pipelines_api = PipelinesApi(api_client)
-    workspace_api = WorkspaceApi(api_client)
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+        workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+        settings = proj_settings.pipeline_settings
+        pipeline_files = get_dlt_artifacts(pipeline_files_dir)
+        pipelines_api = PipelinesApi(api_client)
+        workspace_api = WorkspaceApi(api_client)
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
 
 
     if not settings.name:
@@ -193,8 +207,15 @@ def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path,
 
 def delete(api_client, proj_config_dir):
     """Deletes a pipeline"""
-    proj_settings = get_project_settings(proj_config_dir)
-    settings = proj_settings.pipeline_settings
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        settings = proj_settings.pipeline_settings
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     pipelines_api = PipelinesApi(api_client)
 
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
@@ -272,8 +293,15 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
     return
 
 def show(api_client, proj_config_dir):
-    proj_settings = get_project_settings(proj_config_dir)
-    settings = proj_settings.pipeline_settings
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        settings = proj_settings.pipeline_settings
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     pipelines_api = PipelinesApi(api_client)
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
     
@@ -290,12 +318,18 @@ def show(api_client, proj_config_dir):
     return
 
 def stage(api_client, proj_config_dir, pipeline_files_dir, workspace_path, force):
-
-    proj_settings = get_project_settings(proj_config_dir)
-    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
-    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
-    settings = proj_settings.pipeline_settings
-    pipeline_files = get_dlt_artifacts(pipeline_files_dir)
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+        workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+        settings = proj_settings.pipeline_settings
+        pipeline_files = get_dlt_artifacts(pipeline_files_dir)
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     workspace_api = WorkspaceApi(api_client)
     pipelines_api = PipelinesApi(api_client)
 
@@ -357,8 +391,15 @@ def stage(api_client, proj_config_dir, pipeline_files_dir, workspace_path, force
 
 def start(api_client, as_job, full_refresh, proj_config_dir):
     """Starts a pipeline given a config file or pipeline ID"""
-    proj_settings = get_project_settings(proj_config_dir)
-    settings = proj_settings.pipeline_settings
+    try:
+        proj_settings = get_project_settings(proj_config_dir)
+        settings = proj_settings.pipeline_settings
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     
     pipelines_api = PipelinesApi(api_client)
 
@@ -395,8 +436,15 @@ def start(api_client, as_job, full_refresh, proj_config_dir):
 
 def stop(api_client, proj_config_dir):
     """Stops a pipeline if it is running."""
-    proj_settings = get_project_settings(proj_config_dir)
-    settings = proj_settings.pipeline_settings
+    try: 
+        proj_settings = get_project_settings(proj_config_dir)
+        settings = proj_settings.pipeline_settings
+    except Exception as e:
+        event_print(
+              type="cli_status",
+              level='ERROR',
+              msg=f"{str(e)}")
+        exit(1)
     pipelines_api = PipelinesApi(api_client)
 
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
