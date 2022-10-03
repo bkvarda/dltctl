@@ -22,6 +22,7 @@ setup(
         'configparser>=0.3.5;python_version < "3.6"',
         'pandas',
         'pyarrow',
+        'PyYAML',
         'tabulate'
     ],
     entry_points='''

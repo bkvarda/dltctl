@@ -1,37 +1,37 @@
-from dltctl.cli import _get_pipeline_settings
+from dltctl.core.helpers import get_project_settings
 from dltctl.types.pipelines import PipelineSettings
-import unittest, os
+from dltctl.types.project import ProjectConfig
+import unittest, os, pytest
 from unittest import mock
 from pathlib import Path
+from yaml import YAMLError
 from json import JSONDecodeError
 
-DEFAULT_SETTINGS = PipelineSettings()
+DEFAULT_SETTINGS = ProjectConfig()
 
 class TestCliPipelineSettings(unittest.TestCase):
-    def test_default_settings(self):
+    def test_no_settings_file(self):
         with mock.patch('os.path.exists') as os_mock:
           os_mock.return_value = False
-          settings = _get_pipeline_settings(None)
-          self.assertEqual(settings.name, DEFAULT_SETTINGS.name)
-          self.assertEqual(settings.edition, DEFAULT_SETTINGS.edition)
-          self.assertEqual(settings.photon, DEFAULT_SETTINGS.photon)
-        
+          with pytest.raises(Exception):
+            settings = get_project_settings(None)
+ 
     def test_local_settings(self):
         with mock.patch('os.getcwd') as cwd_mock:
             with mock.patch('os.path.exists') as os_mock:
                 path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
                 cwd_mock.return_value = path
                 os_mock.return_value = True
-                settings = _get_pipeline_settings(None)
-                self.assertEqual(settings.id, 'some-id')
-                self.assertEqual(settings.name, 'mycoolname')
+                settings = get_project_settings(None)
+                self.assertEqual(settings.pipeline_settings.id, None)
+                self.assertEqual(settings.pipeline_settings.name, 'mycoolname')
 
 
     def test_specified_settings(self):
         path = str(Path(__file__).parent.parent.resolve()) + '/files/valid/'
-        settings = _get_pipeline_settings(pipeline_config=path)
-        self.assertEqual(settings.id, 'some-id')
-        self.assertEqual(settings.name, 'mycoolname')
+        settings = get_project_settings(path)
+        self.assertEqual(settings.pipeline_settings.id, None)
+        self.assertEqual(settings.pipeline_settings.name, 'mycoolname')
 
     def test_invalid_local_settings(self):
         with mock.patch('os.getcwd') as cwd_mock:
@@ -39,9 +39,9 @@ class TestCliPipelineSettings(unittest.TestCase):
                 path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
                 cwd_mock.return_value = path
                 os_mock.return_value = True
-                self.assertRaises(JSONDecodeError, lambda: _get_pipeline_settings(None))
+                self.assertRaises(Exception, lambda: get_project_settings(None))
 
 
     def test_invalid_specified_settings(self):
         path = str(Path(__file__).parent.parent.resolve()) + '/files/invalid/'
-        self.assertRaises(JSONDecodeError, lambda: _get_pipeline_settings(pipeline_config=path))
+        self.assertRaises(Exception, lambda: get_project_settings(path))

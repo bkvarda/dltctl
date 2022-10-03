@@ -2,10 +2,9 @@ import json
 from pathlib import Path
 
 class AccessConfig:
-    def __init__(self, manager_groups=None, reader_groups=None, notification_group=None):
+    def __init__(self, manager_groups=None, reader_groups=None):
         self.manager_groups = manager_groups
         self.reader_groups = reader_groups
-        self.notification_group = notification_group
 
     def has_acls(self):
         if self.manager_groups or self.reader_groups:
@@ -13,16 +12,24 @@ class AccessConfig:
         else:
             return False
 
-    def from_dict(self):
-        for k, v in dict.items():
+    def from_dict(self, acfg_dict):
+        for k, v in acfg_dict.items():
                 setattr(self, k, v)
         return self
 
     def to_dict(self):
-        return self.__dict__
+        base_dict = self.__dict__
+        acl_conf_dict = {}
+        for k, v in base_dict.items():
+            if v is None:
+                pass
+            else:
+                acl_conf_dict[k] = v
+              
+        return acl_conf_dict
 
 class JobConfig():
-    def __init__(self, name, tasks=None, tags=None, email_notifications=None,
+    def __init__(self, name=None, tasks=None, tags=None, email_notifications={},
     max_concurrent_runs=2, format="MULTI_TASK", access_control_list=None,
     schedule=None):
         self.name = name
@@ -41,10 +48,11 @@ class JobConfig():
             "pipeline_task":{"pipeline_id": pipeline_id, "full_refresh": full_refresh}
             }]
 
-    def from_dict(self):
+    def from_dict(self, jobcfg_dict):
         try:
-            for k, v in dict.items():
-                setattr(self, k, v)
+            for k, v in jobcfg_dict.items():
+                if hasattr(self, k):
+                  setattr(self, k, v)
         except Exception as e:
             raise
         return self
@@ -64,7 +72,7 @@ class ClusterConfig():
     def __init__(self, label = "default", num_workers=None,
     driver_node_type_id="c5.4xlarge", node_type_id="c5.4xlarge", 
     policy_id=None, aws_attributes=None, spark_conf=None, 
-    spark_env_vars=None, init_script=None, cluster_log_conf=None,
+    spark_env_vars=None, init_scripts=None, cluster_log_conf=None,
     autoscale=None, custom_tags=None, cluster_name=None):
         self.label = label
         self.num_workers = num_workers
@@ -75,7 +83,7 @@ class ClusterConfig():
         self.aws_attributes = aws_attributes
         self.spark_conf = spark_conf
         self.spark_env_vars = spark_env_vars
-        self.init_script = init_script
+        self.init_scripts = init_scripts
         self.custom_tags = custom_tags
         self.cluster_log_conf = cluster_log_conf
         self.cluster_name = cluster_name
@@ -94,7 +102,8 @@ class ClusterConfig():
     def from_dict(self, dict):
         try:
             for k, v in dict.items():
-                setattr(self, k, v)
+                if hasattr(self, k):
+                  setattr(self, k, v)
         except Exception as e:
             raise
         return self
@@ -110,11 +119,9 @@ class ClusterConfig():
               
         return cluster_dict
 
-
-
 class PipelineSettings():
     def __init__(self, name = None, libraries = None, 
-    edition = 'advanced', target=None, storage=None,
+    edition = 'advanced', target="default", storage=None,
     continuous=False,photon=False, 
     channel='CURRENT', development=True, id = None, 
     configuration=None, clusters=None, pipeline_files=None):
@@ -131,109 +138,7 @@ class PipelineSettings():
         self.configuration = configuration
         self.clusters = clusters
         self.pipeline_files = pipeline_files
-    
-    def has_access_config(self):
-        acfg = self.get_access_config()
-        return acfg.has_acls()
-
-    def get_access_config(self):
-        return AccessConfig(
-            manager_groups=self.get_manager_groups(),
-            reader_groups=self.get_reader_groups(),
-            notification_group=self.get_notification_group()
-        )
-    
-    def set_access_config(self, acl_list, notification_group=None):
-        self.set_reader_groups(acl_list.group_viewers)
-        self.set_manager_groups(acl_list.group_managers)
-        self.set_notification_group(notification_group)
-        return
-    
-    def get_reader_groups(self):
-        if self.configuration:
-            if "reader_groups" in self.configuration:
-                readers = self.configuration["reader_groups"].replace(" ","").split(",")
-                if len(readers[0]) > 0:
-                    return readers
-        return None
-
-    def get_manager_groups(self):
-        if self.configuration:
-            if "manager_groups" in self.configuration:
-                mgrs = self.configuration["manager_groups"].replace(" ","").split(",")
-                if len(mgrs[0]) > 0:
-                    return mgrs
-        return None
-
-    def get_notification_group(self):
-        if self.configuration:
-            if "notification_group" in self.configuration:
-                return self.configuration["notification_group"]
-            return
-        else:
-            return None
-
-    def set_reader_groups(self, groups):
-        if not groups:
-            return
-        elif type(groups) is not list:
-            raise TypeError(f"Invalid argument. Groups needs to be a list, received: {groups}")
-
-        if self.configuration:
-            self.configuration["reader_groups"] = ','.join(groups)
-            return
-        else:
-            self.configuration = {"reader_groups": ','.join(groups)}
-            return
-
-    def set_manager_groups(self, groups):
-        if not groups:
-            return
-        elif type(groups) is not list:
-            raise TypeError(f"Invalid argument. Groups needs to be a list, received: {groups}")
-
-        if self.configuration:
-            self.configuration["manager_groups"] = ','.join(groups)
-            return
-        else:
-            self.configuration = {"manager_groups": ','.join(groups)}
-            return
-    
-    def set_notification_group(self, group):
-        if not group:
-            return
-        elif type(group) is not str:
-            raise TypeError(f"Invalid argument. Group needs to be a string, received: {group}")
-
-        if self.configuration:
-            self.configuration["notification_group"] = group
-            return
-        else:
-            self.configuration = {"notification_group": group}
-            return
-
-    def set_job_id(self, job_id):
-        if self.configuration:
-            self.configuration["job_id"] = job_id
-            return
-        else:
-            self.configuration = {"job_id": job_id}
-
-    def get_job_id(self):
-        if self.configuration:
-            if "job_id" in self.configuration:
-                return self.configuration["job_id"]
-            return
-        else:
-            return None
-
-    def delete_job_id(self):
-        if self.configuration:
-            self.configuration.pop("job_id", None)
-            return
-        else:
-            return
-    
+     
     def load(self, directory):
         settings_path  = Path(directory,"pipeline.json").as_posix()
         try:
@@ -247,7 +152,7 @@ class PipelineSettings():
         settings_path  = Path(directory,"pipeline.json").as_posix()
         try:
             with open(settings_path, 'w') as f:
-                json.dump(self.to_json(), f, indent=4)
+                json.dump(self.to_json(omit_libraries=True, omit_id=True), f, indent=4)
             
             return
         except Exception as e:
@@ -275,7 +180,7 @@ class PipelineSettings():
             raise
         return self
 
-    def to_json(self):
+    def to_json(self, omit_libraries=False, omit_id=False):
         json_body = {
            "libraries": [
 
@@ -297,7 +202,7 @@ class PipelineSettings():
         if self.target:
             json_body["target"] = self.target
         
-        if self.id:
+        if self.id and not omit_id:
             json_body["id"] = self.id
         
         if self.name:
@@ -312,11 +217,14 @@ class PipelineSettings():
                     {"notebook": {"path": self.pipeline_files[i]}}
                 )
         if self.clusters is None:
-            default_cluster = ClusterConfig(autoscale={"min_workers":1, "max_workers":5})
+            default_cluster = ClusterConfig(autoscale={"min_workers":1, "max_workers":5, "mode": "ENHANCED"})
             json_body["clusters"].append(default_cluster.to_dict())
         else:
             for c in self.clusters:
                 cluster = ClusterConfig().from_dict(c)
                 json_body["clusters"].append(cluster.to_dict())
+
+        if omit_libraries:
+            json_body.pop("libraries",None)
         
         return json_body

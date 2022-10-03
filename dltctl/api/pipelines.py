@@ -13,10 +13,10 @@ class PipelineNameNotFoundError(Exception):
 
 class PipelinesApi(PipelinesApi):
     
-    def get_pipeline_by_name(self,pipeline_name):
+    def get_pipeline_id_by_name(self, pipeline_name):
         pipelines = self.list()
         if(len(pipelines) < 1):
-            raise PipelineNameNotFoundError(f"No pipeline named {pipeline_name} found")
+            return None
         
         pipelines_with_name = []
         for pipeline in pipelines:
@@ -24,12 +24,11 @@ class PipelinesApi(PipelinesApi):
                 pipelines_with_name.append(pipeline)
         
         if(len(pipelines_with_name) < 1):
-            raise PipelineNameNotFoundError(f"No pipeline named {pipeline_name} found")
+            return None
         elif (len(pipelines_with_name) > 1):
-            raise PipelineNameNotUniqueError("Unable to get pipeline by name: Multiple pipelines with the same name." /
-            + "Please use an id instead. Pipelines:" + str(pipelines_with_name))
+            raise PipelineNameNotUniqueError(f"Unable to get pipeline by name: Multiple pipelines with the same name: {pipelines_with_name} ")
         else:
-            return pipelines_with_name[0]
+            return pipelines_with_name[0]["pipeline_id"]
 
     def get_last_update_id(self, pipeline_id):
         pipeline = self.get(pipeline_id)
@@ -63,9 +62,6 @@ class PipelinesApi(PipelinesApi):
             libs.append(library["notebook"]["path"])
         return libs
         
-
-
-
     def stream_events(self, pipeline_id, ts=None, polling_interval=3, max_polls_without_events=None, verbose=False):
         start_time = ts
         polls_without_events = 0
@@ -142,7 +138,6 @@ class PipelinesApi(PipelinesApi):
         return
 
     def get_events(self, pipeline_id, max_result=100, order_by="timestamp asc", timestamp_filter=None):
-        headers = {}
         _data = {}
         _data["max_results"] = max_result
         _data["order_by"] = order_by
@@ -150,7 +145,7 @@ class PipelinesApi(PipelinesApi):
             _data["filter"] = f'timestamp > \'{timestamp_filter}\''
 
         response = self.client.client.perform_query(
-            'GET', f'/pipelines/{pipeline_id}/events', data=_data, headers=headers)
+            'GET', f'/pipelines/{pipeline_id}/events', data=_data)
         
         return response
     
