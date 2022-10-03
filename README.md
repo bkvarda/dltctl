@@ -44,6 +44,7 @@ Now you just need to bring your own DLT pipeline.
 Or if you just want to get started, you can try this:
 ```
 echo "CREATE LIVE TABLE $(whoami | sed 's/\.//g')_dltctl_quickstart AS SELECT 1" > test.sql
+```
 
 Now you have the basics for a DLT pipeline deployment. You can deploy with dltctl like this:
 
