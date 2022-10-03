@@ -42,7 +42,7 @@ jobs:
         run: pytest tests --cov=./
       
       - name: Install from branch
-        run: pip install git+https://github.com/bkvarda/dltctl.git@${GITHUB_REF##*/}
+        run: pip install git+https://github.com/bkvarda/dltctl.git@main
 
       - name: Run commands
         run: dltctl --help
