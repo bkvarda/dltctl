@@ -114,10 +114,7 @@ class TestPipelineSettings(unittest.TestCase):
       settings = PipelineSettings().load(path)
       self.assertEqual(settings.id, 'some-id')
       self.assertEqual(settings.name, 'mycoolname')
-      self.assertEqual(settings.get_job_id(), "foo1338")
-      self.assertEqual(settings.get_manager_groups(), ["baz@foo.com"])
-      self.assertEqual(settings.get_reader_groups(), ["foo@bar.com","bar@baz.com"])
-      self.assertEqual(settings.get_notification_group(), "some@one.com")
+
 
 
     def test_load_invalid(self):
@@ -135,44 +132,6 @@ class TestPipelineSettings(unittest.TestCase):
       path = str(Path(__file__).parent.parent.resolve()) + '/files/nopipelinefile'
       self.assertRaises(FileNotFoundError, lambda: PipelineSettings().load(path))
 
-    def test_set_get_job_id(self):
-      settings = PipelineSettings()
-      settings.set_job_id("foo")
-      self.assertEqual(settings.configuration["job_id"], "foo")
-      self.assertEqual(settings.get_job_id(), "foo")
-
-    def test_set_get_access_configs(self):
-      settings = PipelineSettings()
-      acl_list = AclList()
-      acl_list.group_managers=["cool@person.com"]
-      acl_list.group_viewers=["foo@bar.com","bar@foo.com"]
-      settings.set_access_config(
-        acl_list,
-        notification_group="me@me.com")
-
-      acfg = settings.get_access_config()
-      acfg_dict = acfg.to_dict()
-      assert settings.get_notification_group() == "me@me.com"
-      assert settings.get_manager_groups() == ["cool@person.com"]
-      assert settings.get_reader_groups() == ["foo@bar.com","bar@foo.com"]
-      assert acfg_dict["manager_groups"] == ["cool@person.com"] 
-      assert acfg_dict["reader_groups"] == ["foo@bar.com","bar@foo.com"]
-      assert acfg_dict["notification_group"] == "me@me.com"
-      assert settings.configuration["manager_groups"] == "cool@person.com"
-      assert settings.configuration["reader_groups"] == "foo@bar.com,bar@foo.com"
-      assert settings.configuration["notification_group"] == "me@me.com"
-
-    def test_set_get_access_configs(self):
-        settings = PipelineSettings()
-        acl_list = AclList()
-        acl_list.group_managers=[" "]
-        acl_list.group_viewers=["",""]
-        settings.set_access_config(
-          acl_list,
-          notification_group="me@me.com")
-      
-        acfg = settings.get_access_config()
-        assert acfg.has_acls() == False
 
     
 

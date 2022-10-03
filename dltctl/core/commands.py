@@ -4,18 +4,21 @@ from dltctl.utils.print_utils import event_print
 from dltctl.api.pipelines import PipelinesApi
 from dltctl.api.warehouses import DBSQLClient
 from dltctl.types.pipelines import ClusterConfig,PipelineSettings
+from dltctl.types.project import ProjectConfig
 from pathlib import Path
 import datetime
 
-def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_files):
+def create(api_client, proj_config_dir, workspace_path, pipeline_files_dir):
     """Creates a pipeline with the specified configuration."""
-    output_dir = get_save_dir(pipeline_config)
-    settings = get_pipeline_settings(pipeline_config)
+    proj_settings = get_project_settings(proj_config_dir)
+    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+    settings = proj_settings.pipeline_settings
     workspace_api = WorkspaceApi(api_client)
     pipelines_api = PipelinesApi(api_client)
 
 
-    if not pipeline_name and not settings.name:
+    if not settings.name:
         event_print(
             type="cli_status",
             level='ERROR',
@@ -28,7 +31,6 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
        event_print("cli_status", level="ERROR", msg=f"Trying to create a pipeline using a name that already exists. Existing pipeline ID: {settings.id}")
        exit(1)
 
-
     if settings.libraries:
         pass
     else:
@@ -36,7 +38,7 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
             workspace_path = workspace_api.get_default_workspace_path()
             
 
-        pipeline_files = get_dlt_artifacts(pipeline_files)
+        pipeline_files = get_dlt_artifacts(pipeline_files_dir)
 
         if not pipeline_files:
           event_print(
@@ -46,30 +48,29 @@ def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_
           return
     
         artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
-    
-    # Update settings with any defined settings
-    if not settings.name:
-        settings.name = pipeline_name
+        settings.pipeline_files = artifacts
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     event_print("cli_status", level="INFO", msg=f"Creating pipeline named: {settings.name}")
     json_settings = settings.to_json()
     pipeline = pipelines_api.create(settings=json_settings)
-    set_acls(api_client, settings)
+    #set_acls(api_client, proj_settings)
 
-def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
+def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
-    output_dir = get_save_dir(pipeline_config)
-    settings = get_pipeline_settings(pipeline_config)
-    pipeline_files = get_dlt_artifacts(pipeline_files)
+    proj_settings = get_project_settings(proj_config_dir)
+    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+    settings = proj_settings.pipeline_settings
+    pipeline_files = get_dlt_artifacts(pipeline_files_dir)
     pipelines_api = PipelinesApi(api_client)
     workspace_api = WorkspaceApi(api_client)
 
 
-    if not pipeline_name and not settings.name:
+    if not settings.name:
         event_print(
             type="cli_status",
             level='ERROR',
-            msg="Missing pipeline name argument or config. A pipeline name is required for a first-time deployment")
+            msg="Missing pipeline name in config. A pipeline name is required for a first-time deployment")
         exit(1)
 
     if not pipeline_files:
@@ -79,8 +80,6 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
             msg="Unable to detect pipeline files in current directory and no pipeline files specified. Pipeline files are required for a pipeline to be created")
         exit(1)
     # Update settings with any defined settings
-    if not settings.name:
-        settings.name = pipeline_name
 
     if not workspace_path:
         workspace_path = workspace_api.get_default_workspace_path()
@@ -90,11 +89,24 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
     pipeline_files_diffs = get_artifact_diffs(api_client, settings, pipeline_files)
 
     try:
-      if len(pipeline_files_diffs["upload"]) > 0 or len(pipeline_files_diffs["delete"]) > 0 or is_settings_diff(api_client, settings):
-          artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
-          settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
-          json_settings = settings.to_json()
-
+      if (len(pipeline_files_diffs["upload"]) > 0 
+           or len(pipeline_files_diffs["delete"]) > 0 
+           or is_pipeline_settings_diff(api_client, settings)
+           or bool(force)):
+        
+        if bool(force):
+            event_print(
+            type="cli_status",
+            level="INFO",
+            msg="Force flag was set - force uploading all artifacts"
+        )
+            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
+            settings.pipeline_files = artifacts
+            json_settings = settings.to_json()
+        else:
+            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
+            settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
+            json_settings = settings.to_json()
       else:
         event_print(
             type="cli_status",
@@ -133,8 +145,8 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               level='INFO',
               msg=f"Updating settings for pipeline ID: {settings.id}")
 
-      set_acls(api_client, settings)
-      
+      #set_acls(api_client, proj_settings)
+
       # Workaround for Pipeline Edit API starting continuous pipelines
       if settings.continuous:
           edit_and_stop_continuous(api_client, settings)
@@ -143,9 +155,9 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
 
       if(bool(as_job)):
         run_as_job(api_client=api_client, 
-          settings=settings, 
+          settings=proj_settings, 
           full_refresh=bool(full_refresh),
-          settings_dir=output_dir)
+          pipeline_id=settings.id)
       else:
           event_print(
                   type="cli_status",
@@ -176,10 +188,10 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
               msg=f"{str(e)}")
         exit(1)
 
-def delete(api_client, pipeline_config):
+def delete(api_client, proj_config_dir):
     """Deletes a pipeline"""
-    output_dir = get_save_dir(pipeline_config)
-    settings = get_pipeline_settings(pipeline_config)
+    proj_settings = get_project_settings(proj_config_dir)
+    settings = proj_settings.pipeline_settings
     pipelines_api = PipelinesApi(api_client)
 
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
@@ -188,7 +200,7 @@ def delete(api_client, pipeline_config):
         event_print(
             type="cli_status",
             level='INFO',
-            msg="No pipeline ID found for configured name or no settings found. Nothing to delete.")
+            msg="No pipeline ID found for configured name. Nothing to delete.")
         exit(1)
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
@@ -206,7 +218,7 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
     
     output_dir = output_dir if output_dir else os.getcwd()
     if not force:
-        output_path = Path(output_dir, 'pipeline.json').as_posix()
+        output_path = Path(output_dir, 'dltctl.yaml').as_posix()
         if os.path.exists(output_path):
             event_print("cli_status", level="ERROR", msg=f"Settings already exist in {output_path}. Delete or use -f to overwrite")
             exit(1)
@@ -252,12 +264,13 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
         clusters = cluster_confs
 
     settings.clusters = clusters
-
-    settings.save(output_dir)
+    project_settings = ProjectConfig(pipeline_settings=settings)
+    project_settings.save(output_dir)
     return
 
-def show(api_client, pipeline_config):
-    settings = get_pipeline_settings(pipeline_config)
+def show(api_client, proj_config_dir):
+    proj_settings = get_project_settings(proj_config_dir)
+    settings = proj_settings.pipeline_settings
     pipelines_api = PipelinesApi(api_client)
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
     
@@ -273,10 +286,13 @@ def show(api_client, pipeline_config):
     print(p)
     return
 
-def stage(api_client, pipeline_config, pipeline_files, workspace_path):
+def stage(api_client, proj_config_dir, pipeline_files_dir, workspace_path, force):
 
-    settings = get_pipeline_settings(pipeline_config)
-    pipeline_files = get_dlt_artifacts(pipeline_files)
+    proj_settings = get_project_settings(proj_config_dir)
+    pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
+    workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
+    settings = proj_settings.pipeline_settings
+    pipeline_files = get_dlt_artifacts(pipeline_files_dir)
     workspace_api = WorkspaceApi(api_client)
     pipelines_api = PipelinesApi(api_client)
 
@@ -301,9 +317,22 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
     
     pipeline_files_diffs = get_artifact_diffs(api_client, settings, pipeline_files)
 
-    if(len(pipeline_files_diffs["upload"]) > 0) or len(pipeline_files_diffs["delete"]) > 0 or is_settings_diff(api_client, settings):
-        artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
-        settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
+    if (len(pipeline_files_diffs["upload"]) > 0 
+           or len(pipeline_files_diffs["delete"]) > 0 
+           or is_pipeline_settings_diff(api_client, settings)
+           or bool(force)):
+        
+        if bool(force):
+            event_print(
+            type="cli_status",
+            level="INFO",
+            msg="Force flag was set - force uploading all artifacts"
+        )
+            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
+            settings.pipeline_files = artifacts
+        else:
+            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
+            settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
 
         # An edit starts a pipeline for a continuous pipeline which may not be desired.
     
@@ -320,14 +349,13 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
             edit_and_stop_continuous(api_client, settings)
         else:
             pipelines_api.edit(settings.id, settings)
-            set_acls(api_client, settings)
-            
         
+        #set_acls(api_client, proj_settings)
 
-def start(api_client, as_job, full_refresh, pipeline_config):
+def start(api_client, as_job, full_refresh, proj_config_dir):
     """Starts a pipeline given a config file or pipeline ID"""
-    settings = get_pipeline_settings(pipeline_config)
-    output_dir = get_save_dir(pipeline_config)
+    proj_settings = get_project_settings(proj_config_dir)
+    settings = proj_settings.pipeline_settings
     
     pipelines_api = PipelinesApi(api_client)
 
@@ -337,7 +365,7 @@ def start(api_client, as_job, full_refresh, pipeline_config):
         event_print(
             type="cli_status",
             level='INFO',
-            msg="No pipeline ID in settings or no settings found. Nothing to start.")
+            msg="No pipeline ID found for defined pipeline name. Nothing to start.")
         exit(1)
 
     # Check to see if the pipeline is already running
@@ -353,18 +381,19 @@ def start(api_client, as_job, full_refresh, pipeline_config):
     
     if(bool(as_job)):
         run_as_job(api_client=api_client, 
-          settings=settings, 
+          settings=proj_settings, 
           full_refresh=bool(full_refresh),
-          settings_dir=output_dir)
+          pipeline_id=settings.id)
         exit(0)
     else:
         pipelines_api.start_update(settings.id, bool(full_refresh))
         pipelines_api.stream_events(settings.id, ts=ts, max_polls_without_events=10)
         exit(0)
 
-def stop(api_client, pipeline_config):
+def stop(api_client, proj_config_dir):
     """Stops a pipeline if it is running."""
-    settings = get_pipeline_settings(pipeline_config)
+    proj_settings = get_project_settings(proj_config_dir)
+    settings = proj_settings.pipeline_settings
     pipelines_api = PipelinesApi(api_client)
 
     settings.id = pipelines_api.get_pipeline_id_by_name(settings.name)
@@ -375,7 +404,6 @@ def stop(api_client, pipeline_config):
             level='INFO',
             msg=f"No existing pipeline with name {settings.name} found or no settings found. Nothing to stop.")
         exit(1)
-
 
     ts = datetime.datetime.utcnow().isoformat()[:-3]+'Z'
     state = pipelines_api.get_pipeline_state(settings.id)

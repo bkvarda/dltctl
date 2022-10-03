@@ -2,6 +2,7 @@
 import click
 from databricks_cli.configure.config import provide_api_client, profile_option, debug_option
 from databricks_cli.configure.cli import configure_cli
+from databricks_cli.secrets.cli import secrets_group
 from databricks_cli.utils import pipelines_exception_eater
 from dltctl.core import commands
 from dltctl.core.constants import *
@@ -11,26 +12,28 @@ def cli():
     pass
 
 cli.add_command(configure_cli, name='configure')
+cli.add_command(secrets_group, name='secrets')
 
 @cli.command()
-@click.argument('pipeline_name', type=str, default=None, required=False)
 @click.option('-j', '--as-job', 'as_job', is_flag=True, help=AS_JOB_HELP)
 @click.option('-r', '--full-refresh', 'full_refresh', is_flag=True, help=FULL_REFRESH_HELP)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=WORKSPACE_PATH_HELP)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=PIPELINE_FILES_HELP)
+@click.option('-f', '--pipeline-files-dir', 'pipeline_files_dir', type=click.Path(), help=PIPELINE_FILES_HELP)
 @click.option('-v', '--verbose-events', 'verbose_events', is_flag=True, help=VERBOSE_EVENTS_HELP)
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
+@click.option('--force', is_flag=True, help=FORCE_HELP)
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, workspace_path, verbose_events, pipeline_config):
+def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     commands.deploy(
         api_client, as_job, 
-        full_refresh, pipeline_name, 
-        pipeline_files, workspace_path, 
-        verbose_events, pipeline_config)
+        full_refresh,
+        pipeline_files_dir, workspace_path, 
+        verbose_events, proj_config_dir,
+        force)
   
 @cli.command()
 @debug_option
@@ -38,11 +41,12 @@ def deploy(api_client, as_job, full_refresh, pipeline_name, pipeline_files, work
 @pipelines_exception_eater
 @provide_api_client
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=WORKSPACE_PATH_HELP)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=PIPELINE_FILES_HELP)
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
-def stage(api_client, pipeline_config, pipeline_files, workspace_path):
+@click.option('-f', '--pipeline-files-dir', 'pipeline_files_dir', type=click.Path(), help=PIPELINE_FILES_HELP)
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
+@click.option('--force', is_flag=True, help=FORCE_HELP)
+def stage(api_client, proj_config_dir, pipeline_files_dir, workspace_path, force):
     """Stages DLT pipeline code artifacts as notebooks and updates settings."""
-    commands.stage(api_client, pipeline_config, pipeline_files, workspace_path)
+    commands.stage(api_client, proj_config_dir, pipeline_files_dir, workspace_path, force)
     
 
 @cli.command()
@@ -50,33 +54,32 @@ def stage(api_client, pipeline_config, pipeline_files, workspace_path):
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
-def stop(api_client, pipeline_config):
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
+def stop(api_client, proj_config_dir):
     """Stops a pipeline if it is running."""
-    commands.stop(api_client, pipeline_config)
+    commands.stop(api_client, proj_config_dir)
 
 @cli.command()
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.argument('pipeline_name', type=str, required=False)
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
 @click.option('-w', '--workspace-path', 'workspace_path', type=str, help=WORKSPACE_PATH_HELP)
-@click.option('-f', '--pipeline-files', 'pipeline_files', type=click.Path(), help=PIPELINE_FILES_HELP)
-def create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_files):
+@click.option('-f', '--pipeline-files-dir', 'pipeline_files_dir', type=click.Path(), help=PIPELINE_FILES_HELP)
+def create(api_client, proj_config_dir, workspace_path, pipeline_files_dir):
     """Creates a pipeline with the specified configuration."""
-    commands.create(api_client, pipeline_config, pipeline_name, workspace_path, pipeline_files)
+    commands.create(api_client, proj_config_dir, workspace_path, pipeline_files_dir)
 
 @cli.command()
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path())
-def delete(api_client, pipeline_config):
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path())
+def delete(api_client, proj_config_dir):
     """Deletes a pipeline"""
-    commands.delete(api_client, pipeline_config)
+    commands.delete(api_client, proj_config_dir)
 
 @cli.command()
 @debug_option
@@ -85,20 +88,20 @@ def delete(api_client, pipeline_config):
 @provide_api_client
 @click.option('-j', '--as-job', 'as_job', is_flag=True, help=AS_JOB_HELP)
 @click.option('-r', '--full-refresh', 'full_refresh', is_flag=True, help=FULL_REFRESH_HELP)
-@click.option('-c', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
-def start(api_client, as_job, full_refresh, pipeline_config):
+@click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
+def start(api_client, as_job, full_refresh, proj_config_dir):
     """Starts a pipeline given a config file or pipeline ID"""
-    commands.start(api_client, as_job, full_refresh, pipeline_config)
+    commands.start(api_client, as_job, full_refresh, proj_config_dir)
 
 @cli.command()
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-@click.option('-p', '--pipeline-config', 'pipeline_config', type=click.Path(), help=PIPELINE_CONFIG_HELP)
-def show(api_client, pipeline_config):
+@click.option('-p', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
+def show(api_client, proj_config_dir):
     """Shows details about pipeline"""
-    commands.show(api_client, pipeline_config)
+    commands.show(api_client, proj_config_dir)
 
 @cli.command()
 @debug_option

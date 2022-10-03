@@ -4,8 +4,6 @@ access_config:
   - bar@bar.com
 databricks_cluster_policy_id: 12345
 databricks_url: http://foo.com
-pipeline_files_local_dir: .
-pipeline_files_workspace_dir: /Users/brandon.kvarda@databricks.com/dltctl_artifacts
 job_config:
   format: MULTI_TASK
   max_concurrent_runs: 2

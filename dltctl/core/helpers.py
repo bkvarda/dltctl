@@ -1,72 +1,106 @@
 from dltctl.types.permissions import AclList
 from dltctl.types.pipelines import PipelineSettings, JobConfig
+from dltctl.types.project import ProjectConfig
 from dltctl.utils.print_utils import event_print
 from dltctl.api.pipelines import PipelinesApi
 from dltctl.api.permissions import PermissionsApi
 from dltctl.api.jobs import JobsApi
 from dltctl.api.workspace import WorkspaceApi
-import os, copy, hashlib, base64
+from pathlib import Path
+import os, copy, hashlib, base64, glob
 
 def set_acls(api_client, settings):
-    
-    if not settings.has_access_config():
+    if not settings.access_config:
+        event_print(
+        type="cli_status",
+        level='INFO',
+        msg="No access_config in project settings. No changes to ACLs needed.")
         return
 
-    access_cfg = settings.get_access_config()
+    pipelines_api = PipelinesApi(api_client)
+    permissions_api = PermissionsApi(api_client)
+    pipeline_id = pipelines_api.get_pipeline_id_by_name(settings.pipeline_settings.id)
+    access_cfg = settings.access_config
     acls = AclList().from_access_config(access_cfg)
-    current_acls = PermissionsApi(api_client).get_pipeline_permissions(settings.id)
+    current_acls = permissions_api.get_pipeline_permissions(pipeline_id)
     owner_info = AclList().from_arr(current_acls)
     acls.add(owner_info.owner_type, owner_info.owner,'IS_OWNER')
-
-    if settings.get_job_id():
+    PermissionsApi(api_client).set_pipeline_permissions(pipeline_id, acls.to_arr())
+    if settings.job_config.name:
         # Set job ACLs
         print()
 
-    PermissionsApi(api_client).set_pipeline_permissions(settings.id, acls.to_arr())
+def create_or_update_job(api_client, settings, full_refresh, pipeline_id):
+    
+    # Check for JobConfig name in project settings
+    if not settings.job_config:
+        raise Exception('No job_config in dltctl.yaml. job_config is required to run as job')
+    elif not settings.job_config.name:
+        raise Exception('job_config present in dltctl.yaml but no name. Name is minimally required.')
+    
+    job_conf = settings.job_config
+    job_id = JobsApi(api_client).get_job_id_by_name(settings.job_config.name)
+    # If job doesn't exist for name create one
+    if not job_id:
+        event_print(
+        type="cli_status",
+        level='INFO',
+        msg="Detected first time running as job. Creating job")
 
-def create_or_update_job(api_client, settings, full_refresh):
-    # If job doesn't exist create one
-        if not settings.get_job_id():
+        job_conf.set_pipeline_task(pipeline_id, full_refresh=full_refresh)
+        try:
+            created_job_id = JobsApi(api_client).create_job(job_conf.to_dict())["job_id"]
+            event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Created job {created_job_id}")
+
+            return created_job_id
+        except Exception as e:
+            raise
+    else:
+        # Check to see if job needs to be updated given settings
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="Checking for job diffs")
+        if is_job_conf_diff(api_client, job_conf, job_id):
+            # We need to update the job
+            job_conf.set_pipeline_task(pipeline_id, full_refresh=full_refresh)
+            payload = {"job_id": job_id, "new_settings": job_conf.to_dict()}
             event_print(
             type="cli_status",
             level='INFO',
-            msg="Detected first time running as job. Creating job")
-
-            job_conf = JobConfig(settings.name)
-            job_conf.set_pipeline_task(settings.id, full_refresh=full_refresh)
-            try:
-                res = JobsApi(api_client).create_job(job_conf.to_dict())
-                settings.set_job_id(res["job_id"])
-                event_print(
-                  type="cli_status",
-                  level='INFO',
-                  msg=f"Created job {settings.get_job_id()}")
-                # We also need to update the pipeline config to reference the new job
-                PipelinesApi(api_client).edit(settings.id, settings)
-                return settings
-            except Exception as e:
-                raise
-        else:
-            return settings
+            msg="Updating job with new settings")
+            JobsApi(api_client).reset_job(payload)
+        return job_id
     
-def run_as_job(api_client, settings, full_refresh, settings_dir):
+def run_as_job(api_client, settings, full_refresh, pipeline_id):
     event_print(
             type="cli_status",
             level='INFO',
             msg="Running non-interactively as a job")
     
     # Check if associated job
-    settings = create_or_update_job(api_client, settings, full_refresh)
-    settings.save(settings_dir)
+    job_id = create_or_update_job(api_client, settings, full_refresh, pipeline_id)
+
+    # Check if job is to be scheduled - if so, don't start it
+    if settings.job_config.schedule:
+        event_print(
+            type="cli_status",
+            level='INFO',
+            msg="Job has schedule set. Nothing else to do")
+        return
+
     
     # Otherwise start the job
     event_print(
               type="cli_status",
               level='INFO',
-              msg=f"Starting job {settings.get_job_id()}")
+              msg=f"Starting job {job_id}")
     
     try:
-        run_id = JobsApi(api_client).run_now(settings.get_job_id(),full_refresh=bool(full_refresh))
+        run_id = JobsApi(api_client).run_now(job_id,full_refresh=bool(full_refresh))
         event_print(
               type="cli_status",
               level='INFO',
@@ -75,19 +109,10 @@ def run_as_job(api_client, settings, full_refresh, settings_dir):
         event_print(
              type="cli_status",
              level='INFO',
-             msg=f"Run started. Job ID: {settings.get_job_id()}, Run ID: {run_id}")
+             msg=f"Run started. Job ID: {job_id}, Run ID: {run_id}")
 
     except Exception as e:
-        # If the job in conf was deleted out of band we can create another
-        if "does not exist" in str(e):
-            event_print(
-              type="cli_status",
-              level='INFO',
-              msg=f"Job {settings.get_job_id()} from settings does not exist. Creating a new job")
-            settings.delete_job_id()
-            run_as_job(api_client, settings, full_refresh, settings_dir)
-        else:
-            raise
+        raise
     
     return
 
@@ -121,7 +146,50 @@ def get_pipeline_settings(pipeline_config=None):
         pass
     return settings
 
-def is_settings_diff(api_client, settings):
+def get_project_settings(settings_dir=None):
+    current_dir = os.getcwd()
+    local_settings_path = current_dir + '/dltctl.yaml'
+    #  Use another pipeline settings if defined
+    if settings_dir:
+        return ProjectConfig().load(settings_dir)
+    #  Try to load a pipeline settings if in current directory
+    elif os.path.exists(local_settings_path):
+        return ProjectConfig().load(current_dir)
+    # Otherwise raise exception
+    else:
+        raise Exception("No dltctl.yaml found. Use dltctl init if you haven't created one yet.")
+    
+def is_job_conf_diff(api_client, job_conf, job_id):
+    remote_settings = JobConfig().from_dict(JobsApi(api_client).get_job(job_id)["settings"])
+    r = copy.deepcopy(remote_settings)
+    # Don't compare tasks or description, we're concerned about the core settings
+    r.tasks = None
+    r.description = None
+    s = copy.deepcopy(job_conf)
+    settings_diff = not r.to_dict() == s.to_dict()
+    if settings_diff:
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Diff in job configuration found")
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"Current: {r.to_dict()}")
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"New: {s.to_dict()}")
+    else:
+        event_print(
+              type="cli_status",
+              level='INFO',
+              msg=f"No diff in job configuration found")
+    return settings_diff
+
+def is_access_conf_diff(api_client, access_conf):
+    return
+def is_pipeline_settings_diff(api_client, settings):
     remote_settings = PipelineSettings().from_dict(PipelinesApi(api_client).get_pipeline_settings(settings.id))
     r = copy.deepcopy(remote_settings)
     s = copy.deepcopy(settings)
@@ -148,21 +216,12 @@ def is_settings_diff(api_client, settings):
     return settings_diff
 
 
-def get_dlt_artifacts(pipeline_files=None):   
-    current_dir = os.getcwd()
-    all_files = os.listdir(current_dir)
-    #  Automatically add any local python or sql files as pipeline artifacts
-    if pipeline_files is None:
-       pipeline_files = []
+def get_dlt_artifacts(pipeline_files_dir=None):  
+    files_dir = Path(pipeline_files_dir).as_posix() if pipeline_files_dir else os.getcwd()
+    py_files = glob.glob(files_dir + '/**/*.py', recursive=True)
+    sql_files = glob.glob(files_dir + '/**/*.sql', recursive=True)
+    pipeline_files = py_files + sql_files
 
-    else:
-        all_files = pipeline_files.replace(" ","").split(',')
-        pipeline_files = []
-
-    for f in all_files:
-        if f.endswith(".py") or f.endswith(".sql"):
-            pipeline_files.append(f)
-      
     if len(pipeline_files) < 1:
         return None
         
@@ -197,7 +256,7 @@ def get_artifact_diffs(api_client, settings, artifacts):
         with open(a) as f:
             content = f.read()
             content = "".join([s for s in content.splitlines(True) if s.strip()])
-            md5_hash =hashlib.md5(content.encode('utf-8')).hexdigest()
+            md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
             local_md5s.append(md5_hash)
             local_md5_lookup[md5_hash] = a
  
@@ -237,7 +296,7 @@ def get_artifact_diffs(api_client, settings, artifacts):
         event_print(
         type="cli_status",
         level="INFO",
-        msg=f"No artifact diffs found. Nothing to upload."
+        msg=f"No local artifact diffs found. Nothing new to upload."
         )
 
     ret = {"keep": artifacts_to_keep, "upload": artifacts_to_upload, "delete": artifacts_to_delete}
