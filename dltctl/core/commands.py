@@ -89,33 +89,35 @@ def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path,
     pipeline_files_diffs = get_artifact_diffs(api_client, settings, pipeline_files)
 
     try:
-      if (len(pipeline_files_diffs["upload"]) > 0 
-           or len(pipeline_files_diffs["delete"]) > 0 
-           or is_pipeline_settings_diff(api_client, settings)
-           or bool(force)):
-        
-        if bool(force):
-            event_print(
-            type="cli_status",
-            level="INFO",
-            msg="Force flag was set - force uploading all artifacts"
-        )
-            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
-            settings.pipeline_files = artifacts
-            json_settings = settings.to_json()
+      if(settings.id):
+        if (len(pipeline_files_diffs["upload"]) > 0 
+             or len(pipeline_files_diffs["delete"]) > 0 
+             or is_pipeline_settings_diff(api_client, settings)
+             or bool(force)):
+          
+          if bool(force):
+              event_print(
+              type="cli_status",
+              level="INFO",
+              msg="Force flag was set - force uploading all artifacts"
+          )
+              artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
+              settings.pipeline_files = artifacts
+          else:
+              artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
+              settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
         else:
-            artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files_diffs["upload"],workspace_path)
-            settings.pipeline_files = artifacts + pipeline_files_diffs["keep"]
-            json_settings = settings.to_json()
+          event_print(
+              type="cli_status",
+              level="INFO",
+              msg="No changes detected. Nothing new to deploy."
+          )
+          return
       else:
-        event_print(
-            type="cli_status",
-            level="INFO",
-            msg="No changes detected. Nothing new to deploy."
-        )
-        return
+        artifacts = workspace_api.upload_pipeline_artifacts(pipeline_files,workspace_path)
+        settings.pipeline_files = artifacts
       
-      
+      json_settings = settings.to_json()
       # If there's a pipeline id, it's an update
       if(settings.id):
           pipeline = pipelines_api.get(settings.id)
@@ -134,6 +136,7 @@ def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path,
               msg=f"Detected first time deploy. Creating pipeline named {settings.name}")
 
           pipeline = pipelines_api.create(settings=json_settings)
+          settings.id = pipeline["pipeline_id"]
 
           event_print(
               type="cli_status",

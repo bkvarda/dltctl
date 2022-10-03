@@ -39,7 +39,7 @@ jobs:
         run: pip freeze
 
       - name: Run tests
-        run: pytest tests --cov=./h
+        run: pytest tests --cov=./
       
       - name: Install from branch
         run: pip install git+https://github.com/bkvarda/dltctl.git@${GITHUB_REF##*/}

@@ -248,18 +248,17 @@ def get_artifact_diffs(api_client, settings, artifacts):
         decoded = base64.b64decode(content).decode("utf-8")
         first_nl = decoded.find('\n') + 1
         clean_str = decoded[first_nl:len(decoded)]
-        clean_str = "".join([s for s in clean_str.splitlines(True) if s.strip()])
+        clean_str = "".join([s for s in clean_str.splitlines(True) if s.strip("\r\n")])
         md5_hash = hashlib.md5(clean_str.encode('utf-8')).hexdigest()
         remote_md5s.append(md5_hash)
         remote_md5_lookup[md5_hash] = l
     for a in artifacts:
         with open(a) as f:
             content = f.read()
-            content = "".join([s for s in content.splitlines(True) if s.strip()])
+            content = "".join([s for s in content.splitlines(True) if s.strip("\r\n")])
             md5_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
             local_md5s.append(md5_hash)
             local_md5_lookup[md5_hash] = a
- 
    
     keeps = set(remote_md5s).intersection(set(local_md5s))
     diffs = set(local_md5s) - set(remote_md5s)
