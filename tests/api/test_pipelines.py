@@ -140,6 +140,17 @@ def test_stop_pipeline_async(pipelines_api_get_mock):
     client_mock.assert_called_with("POST", "/pipelines/12345/stop", data={}, headers=None)
     assert client_mock.call_count == 1
 
+def test_stop_pipeline_sync():
+    with mock.patch('databricks_cli.sdk.ApiClient') as client_mock:
+        api = PipelinesApi(client_mock)
+        side_effect = [{"state": "IDLE"}]
+        client_mock.perform_query.return_value = {"state": "IDLE"}
+        api.stop("1337")
+        client_mock.perform_query.assert_any_call("GET", "/pipelines/1337", data={}, headers=None)
+        client_mock.perform_query.assert_any_call("POST", "/pipelines/1337/stop", data={}, headers=None)
+        assert client_mock.perform_query.call_count == 2
+    
+
 
 def test_edit_pipeline(pipelines_api_get_mock):
     client_mock = pipelines_api_get_mock.client.client.perform_query
@@ -156,11 +167,3 @@ def test_create_pipeline(pipelines_api_get_mock):
     pipelines_api_get_mock.create(settings)
     client_mock.assert_called_with("POST", "/pipelines", data=settings, headers=None)
     assert client_mock.call_count == 1
-
-
-
-    
-
-
-
-

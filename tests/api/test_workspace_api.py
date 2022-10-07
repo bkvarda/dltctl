@@ -1,7 +1,8 @@
 from json import JSONDecodeError
 from dltctl.api.workspace import WorkspaceApi
-import unittest
+import unittest, pytest, base64
 from unittest import mock
+from pathlib import Path
 
 
 class TestWorkspaceApi(unittest.TestCase):
@@ -34,3 +35,20 @@ class TestWorkspaceApi(unittest.TestCase):
               import_mock.side_effect = [""]
               api = WorkspaceApi(client_mock)
               self.assertRaises(Exception, WorkspaceApi(client_mock).upload_pipeline_artifacts(["foo.py"],"/Users/foo"))
+
+    def test_get_workspace_file_b64(self):
+      path = str(Path(__file__).parent.parent.resolve()) + '/files/source/export.py'
+      client = mock.MagicMock()
+      api = WorkspaceApi(client)
+      content = None
+      with open(path, 'rb') as f:
+         content = base64.b64encode(f.read())
+      
+      client.perform_query.return_value = {"content": content}
+      workspace_file = api.get_workspace_file_b64("/foo/bar/source.py")
+      assert base64.b64decode(workspace_file) == base64.b64decode(content)
+      client.perform_query.assert_called_with("GET", "/workspace/export", data={"path": "/foo/bar/source.py", "format": "SOURCE"}, headers=None)
+
+
+
+
