@@ -1,5 +1,6 @@
 from dltctl.api.jobs import JobsApi
-import pytest, mock
+import pytest
+from unittest import mock
 
 def test_get_job_id_by_name_single_name():
     client_mock = mock.MagicMock()
