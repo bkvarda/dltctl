@@ -119,6 +119,7 @@ class PipelinesApi(PipelinesApi):
         data = settings
         return self.client.client.perform_query('POST', '/pipelines', data=data,
                                                 headers=headers)
+                                                
     def edit(self, pipeline_id, settings, headers=None):
         data = settings.to_json()
         data["id"] = pipeline_id
