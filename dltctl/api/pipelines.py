@@ -132,7 +132,6 @@ class PipelinesApi(PipelinesApi):
         while(status == 'RUNNING'):
             status = self.get(pipeline_id)["state"]
             time.sleep(3)
-        print(status)
     
     def stop_async(self, pipeline_id, headers=None):
         self.client.stop(pipeline_id, headers)
