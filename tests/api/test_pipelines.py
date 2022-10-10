@@ -1,5 +1,5 @@
 from unittest import mock
-import pytest
+import pytest, json
 from dltctl.api.pipelines import PipelinesApi, PipelineNameNotUniqueError
 from dltctl.types.pipelines import PipelineSettings
 
@@ -165,10 +165,182 @@ _EVENT_JSON = """{
     "event_type": "create_update",
     "maturity_level": "STABLE"
 }"""
+
+_WAITING_EVENT_JSON = """{
+    "id": "15e29b10-48bb-11ed-b1cf-9649472ee14a",
+    "sequence": {
+        "control_plane_seq_no": 1234567789
+    },
+    "origin": {
+        "cloud": "AWS",
+        "region": "us-west-2",
+        "org_id": 1234567789,
+        "pipeline_id": "some-id",
+        "pipeline_name": "foobk1234",
+        "update_id": "update-id",
+        "request_id": "req-id"
+    },
+    "timestamp": "2022-10-10T16:46:28.161Z",
+    "message": "WAITING_FOR_RESOURCES",
+    "level": "INFO",
+    "details": {
+        "create_update": {
+            "cause": "USER_ACTION",
+            "config": {
+                "id": "some-id",
+                "name": "foobk1234",
+                "storage": "dbfs:/pipelines/some-id",
+                "configuration": {
+                    "destination_table": "b",
+                    "pipelines.enzyme.enabled": "true"
+                },
+                "clusters": [
+                    {
+                        "label": "default",
+                        "node_type_id": "c5.4xlarge",
+                        "driver_node_type_id": "c5.4xlarge",
+                        "spark_env_vars": {
+                            "DD_API_KEY": "{{secrets/foo_dlt/dd_api_key}}",
+                            "DD_ENV": "dlt_test_pipeline",
+                            "DD_SITE": "https://app.datadoghq.com"
+                        },
+                        "init_scripts": [
+                            {
+                                "dbfs": {
+                                    "destination": "dbfs:/foo/init_scripts/datadog-install-driver-workers.sh"
+                                }
+                            }
+                        ],
+                        "autoscale": {
+                            "min_workers": 1,
+                            "max_workers": 4,
+                            "mode": "ENHANCED"
+                        }
+                    }
+                ],
+                "libraries": [
+                    {
+                        "notebook": {
+                            "path": "/Users/foo@foo.com/dltctl_artifactsz/test_nested/dlt_listener.py"
+                        }
+                    },
+                    {
+                        "notebook": {
+                            "path": "/Users/foo@foo.com/dltctl_artifactsz/test_nested/multiplex_cdc_bronze.py"
+                        }
+                    }
+                ],
+                "target": "default",
+                "filters": {},
+                "email_notifications": {},
+                "continuous": "true",
+                "development": "true",
+                "photon": "false",
+                "edition": "ADVANCED",
+                "channel": "CURRENT"
+            },
+            "failed_attempts": 0,
+            "full_refresh": "false",
+            "run_as_user_id": 123445678
+        }
+    },
+    "event_type": "create_update",
+    "maturity_level": "STABLE"
+}"""
+_FAILURE_EVENT_JSON = """{
+    "id": "15e29b10-48bb-11ed-b1cf-9649472ee14a",
+    "error": {"exceptions": "some failure exception"},
+    "sequence": {
+        "control_plane_seq_no": 1234567789
+    },
+    "origin": {
+        "cloud": "AWS",
+        "region": "us-west-2",
+        "org_id": 1234567789,
+        "pipeline_id": "some-id",
+        "pipeline_name": "foobk1234",
+        "update_id": "update-id",
+        "request_id": "req-id"
+    },
+    "timestamp": "2022-10-10T16:46:28.161Z",
+    "message": "WAITING_FOR_RESOURCES",
+    "level": "ERROR",
+    "details": {
+        "create_update": {
+            "cause": "USER_ACTION",
+            "config": {
+                "id": "some-id",
+                "name": "foobk1234",
+                "storage": "dbfs:/pipelines/some-id",
+                "configuration": {
+                    "destination_table": "b",
+                    "pipelines.enzyme.enabled": "true"
+                },
+                "clusters": [
+                    {
+                        "label": "default",
+                        "node_type_id": "c5.4xlarge",
+                        "driver_node_type_id": "c5.4xlarge",
+                        "spark_env_vars": {
+                            "DD_API_KEY": "{{secrets/foo_dlt/dd_api_key}}",
+                            "DD_ENV": "dlt_test_pipeline",
+                            "DD_SITE": "https://app.datadoghq.com"
+                        },
+                        "init_scripts": [
+                            {
+                                "dbfs": {
+                                    "destination": "dbfs:/foo/init_scripts/datadog-install-driver-workers.sh"
+                                }
+                            }
+                        ],
+                        "autoscale": {
+                            "min_workers": 1,
+                            "max_workers": 4,
+                            "mode": "ENHANCED"
+                        }
+                    }
+                ],
+                "libraries": [
+                    {
+                        "notebook": {
+                            "path": "/Users/foo@foo.com/dltctl_artifactsz/test_nested/dlt_listener.py"
+                        }
+                    },
+                    {
+                        "notebook": {
+                            "path": "/Users/foo@foo.com/dltctl_artifactsz/test_nested/multiplex_cdc_bronze.py"
+                        }
+                    }
+                ],
+                "target": "default",
+                "filters": {},
+                "email_notifications": {},
+                "continuous": "true",
+                "development": "true",
+                "photon": "false",
+                "edition": "ADVANCED",
+                "channel": "CURRENT"
+            },
+            "failed_attempts": 0,
+            "full_refresh": "false",
+            "run_as_user_id": 123445678
+        }
+    },
+    "event_type": "create_update",
+    "maturity_level": "STABLE"
+}"""
 _EVENTS = [_EVENT_JSON]
+_WAITING_EVENTS = [_WAITING_EVENT_JSON]
+_FAILURE_EVENTS = [_FAILURE_EVENT_JSON]
 
 _EVENTS_RESPONSE = {"next_page_token": 12345,
 "prev_page_token": 12346, "events_json": _EVENTS}
+
+_WAITING_EVENTS_RESPONSE = {"next_page_token": 12345,
+"prev_page_token": 123456, "events_json": _WAITING_EVENTS}
+
+_FAILURE_EVENTS_RESPONSE = {"next_page_token": 12345,
+"prev_page_token": 123456, "events_json": _FAILURE_EVENTS}
 
 @pytest.fixture()
 def pipelines_api_get_mock():
@@ -351,3 +523,22 @@ def test_stream_events_single_event(capsys):
     e = p.stream_events(12345, max_polls_without_events=2)
     out, err = capsys.readouterr()
     assert "create_update Update 175b9d started by USER_ACTION." in out
+
+def test_stream_events_resource_waiting(capsys):
+    client_mock = mock.MagicMock()
+    client_mock.perform_query.side_effect = [_EVENTS_RESPONSE, [], _WAITING_EVENTS_RESPONSE, _EVENTS_RESPONSE, []]
+    p = PipelinesApi(client_mock)
+    e = p.stream_events(12345, max_polls_without_events=1)
+    out, err = capsys.readouterr()
+    assert "create_update Update 175b9d started by USER_ACTION." in out
+
+def test_stream_events_resource_waiting(capsys):
+    client_mock = mock.MagicMock()
+    client_mock.perform_query.side_effect = [_EVENTS_RESPONSE, _FAILURE_EVENTS_RESPONSE]
+    p = PipelinesApi(client_mock)
+    e = p.stream_events(12345, max_polls_without_events=1)
+    out, err = capsys.readouterr()
+    assert "Pipeline execution has FAILED." in out
+
+
+
