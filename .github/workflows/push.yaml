@@ -33,7 +33,7 @@ jobs:
         run: pip install --upgrade pip
 
       - name: Install development dependencies 
-        run: pip install --upgrade -r requirements.txt
+        run: pip install --upgrade -r develop-requirements.txt
 
       - name: Log package versions
         run: pip freeze
