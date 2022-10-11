@@ -2,7 +2,6 @@ from dltctl.core.helpers import *
 from dltctl.core.constants import *
 from dltctl.utils.print_utils import event_print
 from dltctl.api.pipelines import PipelinesApi
-from dltctl.api.warehouses import DBSQLClient
 from dltctl.types.pipelines import ClusterConfig,PipelineSettings
 from dltctl.types.project import ProjectConfig
 from pathlib import Path
@@ -467,7 +466,3 @@ def stop(api_client, proj_config_dir):
     else:
         pipelines_api.stop_async(settings.id)
         pipelines_api.stream_events(settings.id, ts=ts, max_polls_without_events=5)
-
-def query(api_client, query):
-    """Query tables to validate output"""
-    DBSQLClient(api_client).query(query)

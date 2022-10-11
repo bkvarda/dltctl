@@ -11,6 +11,7 @@ from dltctl.core.constants import *
 def cli():
     pass
 
+# Add a couple of databricks CLI command groups that are useful here as well
 cli.add_command(configure_cli, name='configure')
 cli.add_command(secrets_group, name='secrets')
 
@@ -146,15 +147,5 @@ storage, target, policy_id, configuration, clusters, force, output_dir):
 def test(api_client):
     return
    
-@cli.command()
-@debug_option
-@profile_option
-@pipelines_exception_eater
-@provide_api_client
-@click.argument('query')
-def query(api_client, query):
-    """Query tables to validate output"""
-    commands.query(api_client, query)
-
 if __name__ == '__main__':
     cli()
