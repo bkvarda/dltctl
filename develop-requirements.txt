@@ -1,10 +1,6 @@
 databricks-cli>=0.17.3
 colorama>=0.4.5
-databricks-sql-connector
 click>=7.0
-pandas
-pyarrow
-tabulate
 pytest-cov
 decorator
 pyyaml
