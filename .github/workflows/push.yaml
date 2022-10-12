@@ -101,3 +101,8 @@ jobs:
           python -c "import dltctl;"
           which dltctl
           dltctl --help
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository_url: https://test.pypi.org/legacy/
+          password: ${{ secrets.PYPI_TEST_TOKEN }}
