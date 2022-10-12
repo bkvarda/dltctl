@@ -1,6 +1,4 @@
 databricks-cli>=0.17.3
 colorama>=0.4.5
-click>=7.0
 pytest-cov
-decorator
-pyyaml
+PyYAML
