@@ -32,10 +32,13 @@ setup(
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'License :: OSI Approved :: Apache Software License',
     ],
     keywords='databricks dlt delta live tables',
-    url='https://github.com/databrickslabs/dltctl'
+    url='https://github.com/bkvarda/dltctl'
 )
