@@ -27,7 +27,7 @@ setup(
     author_email='brandon@databricks.com',
     description='A command line interface for Databricks Delta Live Tables',
     long_description=readme(),
-    long_description_type='text/markdown',
+    long_description_content_type='text/markdown',
     license='Apache License 2.0',
     classifiers=[
         'Intended Audience :: Developers',
