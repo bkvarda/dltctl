@@ -22,6 +22,7 @@ setup(
     author='Brandon Kvarda',
     author_email='brandon@databricks.com',
     description='A command line interface for Databricks Delta Live Tables',
+    long_description='A command line interface for Databricks Delta Live Tables'
     license='Apache License 2.0',
     classifiers=[
         'Intended Audience :: Developers',
