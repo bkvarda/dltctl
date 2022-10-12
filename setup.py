@@ -4,6 +4,10 @@ from setuptools import setup, find_packages
 if sys.version_info < (3,5):
     sys.exit('Python < 3.5 is not supported')
 
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
 version = "0.1"
 setup(
     name='dltctl',
@@ -22,7 +26,8 @@ setup(
     author='Brandon Kvarda',
     author_email='brandon@databricks.com',
     description='A command line interface for Databricks Delta Live Tables',
-    long_description='A command line interface for Databricks Delta Live Tables',
+    long_description=readme(),
+    long_description_type='text/markdown',
     license='Apache License 2.0',
     classifiers=[
         'Intended Audience :: Developers',
