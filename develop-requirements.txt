@@ -1,5 +1,5 @@
 databricks-cli>=0.17.3
 colorama>=0.4.5
-decorator
-pytest-cov
-PyYAML
+decorator==5.1.1
+pytest-cov==4.0.0
+PyYAML==6.0

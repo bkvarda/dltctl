@@ -11,7 +11,8 @@ setup(
     packages=find_packages(include=['dltctl*']),
     install_requires=[
         'databricks-cli>=0.17.3',
-        'PyYAML',
+        'colorama>=0.4.5',
+        'PyYAML==6.0',
     ],
     entry_points='''
         [console_scripts]
