@@ -60,6 +60,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Get Vars
+        id: vars
+        uses: pr-mpt/actions-commit-hash@v1  
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
         with:
@@ -75,7 +79,7 @@ jobs:
         id: build-dist
         run: |
           # Build distribution files
-          python setup.py egg_info --tag-date --tag-build=dev sdist bdist_wheel
+          python setup.py egg_info --tag-build="${{ steps.vars.outputs.short }}" sdist bdist_wheel
           # List distribution files and check their file sizes
           ls -lh dist
           # Set step outputs
