@@ -10,20 +10,8 @@ setup(
     version=version,
     packages=find_packages(include=['dltctl*']),
     install_requires=[
-        # Note: please keep this in sync with `requirements.txt`.
         'databricks-cli>=0.17.3',
-        'databricks-sql-connector',
-        'click>=7.0',
-        'pyjwt>=1.7.0',
-        'oauthlib>=3.1.0',
-        'requests>=2.17.3',
-        'tabulate>=0.7.7',
-        'six>=1.10.0',
-        'configparser>=0.3.5;python_version < "3.6"',
-        'pandas',
-        'pyarrow',
         'PyYAML',
-        'tabulate'
     ],
     entry_points='''
         [console_scripts]
