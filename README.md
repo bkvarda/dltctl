@@ -4,7 +4,7 @@ A CLI tool for fast local iteration on Delta Live Tables pipelines and rapid dep
 
 #### Installation
 ```
-pip install git+https://github.com/bkvarda/dltctl.git
+pip install dltctl
 ```
 
 #### First-time Configuration
