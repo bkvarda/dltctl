@@ -9,8 +9,7 @@ class JobsApi(JobsApi):
         if(len(jobs_with_name) < 1):
             return None
         elif (len(jobs_with_name) > 1):
-            raise Exception("Unable to get job by name: Multiple jobs with the same name." /
-            + "dltctl does not support this. Jobs:" + str(jobs_with_name))
+            raise Exception("Unable to get job by name - Multiple jobs with the same name. Jobs:" + str(jobs_with_name))
         else:
             return jobs_with_name[0]["job_id"]
 
