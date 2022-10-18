@@ -37,7 +37,7 @@ jobs:
         id: build-dist
         run: |
           # Build distribution files
-          python setup.py egg_info --tag-date --tag-build=dev sdist bdist_wheel
+          python setup.py sdist bdist_wheel
           # List distribution files and check their file sizes
           ls -lh dist
           # Set step outputs
