@@ -69,3 +69,8 @@ jobs:
         with:
           password: ${{ secrets.PYPI_TOKEN }}
           skip_existing: true
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          
