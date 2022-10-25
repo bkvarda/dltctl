@@ -6,3 +6,4 @@ PROJ_CONFIG_HELP = "Directory containing config named dltctl.yaml. If not specif
 FULL_REFRESH_HELP = "Whether to execute a full refresh of the pipeline"
 AS_JOB_HELP = "(experimental) Whether to run as a Databricks job non-interactively"
 FORCE_HELP = "Force upload artifacts and update settings"
+TEST_HELP = "Run with test files which begin with `test_`"

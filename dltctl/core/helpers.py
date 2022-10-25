@@ -219,7 +219,7 @@ def is_pipeline_settings_diff(api_client, settings):
     return settings_diff
 
 
-def get_dlt_artifacts(pipeline_files_dir=None):  
+def get_dlt_artifacts(pipeline_files_dir=None, ignore_tests=True):  
     files_dir = Path(pipeline_files_dir).as_posix() if pipeline_files_dir else os.getcwd()
     py_files = glob.glob(files_dir + '/**/*.py', recursive=True)
     sql_files = glob.glob(files_dir + '/**/*.sql', recursive=True)
@@ -227,8 +227,11 @@ def get_dlt_artifacts(pipeline_files_dir=None):
 
     if len(pipeline_files) < 1:
         return None
-        
-    return pipeline_files
+    elif ignore_tests:
+        pipeline_files_minus_tests = [f for f in pipeline_files if not 'test_' in f]
+        return pipeline_files_minus_tests
+    else:   
+        return pipeline_files
 
 def get_artifact_diffs(api_client, settings, artifacts):
     # This is a new pipeline, no need to look for diffs

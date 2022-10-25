@@ -61,16 +61,17 @@ def create(api_client, proj_config_dir, workspace_path, pipeline_files_dir):
     pipeline = pipelines_api.create(settings=json_settings)
     #set_acls(api_client, proj_settings)
 
-def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force):
+def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force, test):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     try:
         proj_settings = get_project_settings(proj_config_dir)
         pipeline_files_dir = pipeline_files_dir if pipeline_files_dir else proj_settings.pipeline_files_local_dir
         workspace_path = workspace_path if workspace_path else proj_settings.pipeline_files_workspace_dir
         settings = proj_settings.pipeline_settings
-        pipeline_files = get_dlt_artifacts(pipeline_files_dir)
+        pipeline_files = get_dlt_artifacts(pipeline_files_dir, ignore_tests=not bool(test))
         pipelines_api = PipelinesApi(api_client)
         workspace_api = WorkspaceApi(api_client)
+
     except Exception as e:
         event_print(
               type="cli_status",

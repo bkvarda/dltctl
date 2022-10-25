@@ -23,18 +23,19 @@ cli.add_command(secrets_group, name='secrets')
 @click.option('-v', '--verbose-events', 'verbose_events', is_flag=True, help=VERBOSE_EVENTS_HELP)
 @click.option('-c', '--project-config-dir', 'proj_config_dir', type=click.Path(), help=PROJ_CONFIG_HELP)
 @click.option('--force', is_flag=True, help=FORCE_HELP)
+@click.option('--test', is_flag=True, help=TEST_HELP)
 @debug_option
 @profile_option
 @pipelines_exception_eater
 @provide_api_client
-def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force):
+def deploy(api_client, as_job, full_refresh, pipeline_files_dir, workspace_path, verbose_events, proj_config_dir, force, test):
     """Stages artifacts, creates/starts and/or restarts a DLT pipeline"""
     commands.deploy(
         api_client, as_job, 
         full_refresh,
         pipeline_files_dir, workspace_path, 
         verbose_events, proj_config_dir,
-        force)
+        force, test)
   
 @cli.command()
 @debug_option

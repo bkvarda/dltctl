@@ -71,8 +71,14 @@ class TestGetArtifacts(unittest.TestCase):
 
     def test_none_but_find_local(self):
         with mock.patch('glob.glob') as glob_mock:
-          glob_mock.side_effect = [["foo.py","otherfoo.py"],["otherfoo.sql"]]
+          glob_mock.side_effect = [["foo.py","otherfoo.py","test_otherfoo.py"],["otherfoo.sql", "test_otherfoo.sql"]]
           artifacts = get_dlt_artifacts(None)
           self.assertEqual(len(artifacts), 3)
+
+    def test_none_but_find_local_with_tests(self):
+        with mock.patch('glob.glob') as glob_mock:
+          glob_mock.side_effect = [["foo.py","otherfoo.py","test_otherfoo.py"],["otherfoo.sql", "test_otherfoo.sql"]]
+          artifacts = get_dlt_artifacts(None, ignore_tests=False)
+          self.assertEqual(len(artifacts), 5)
 
 
