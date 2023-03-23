@@ -103,6 +103,16 @@ class TestPipelineSettings(unittest.TestCase):
         self.assertEqual(settings_json["development"], True)
         self.assertEqual(settings_json["photon"], False)
 
+    def test_pipeline_settings_to_json_uc(self):
+        settings = PipelineSettings(name="foo",catalog="mycatalog")
+        settings_json = settings.to_json()
+
+        self.assertEqual(settings_json["name"], "foo")
+        self.assertEqual(settings_json["development"], True)
+        self.assertEqual(settings_json["photon"], False)
+        self.assertEqual(settings_json["catalog"], "mycatalog")
+        self.assertNotIn("storage",settings_json)
+
     def test_save(self):
       settings = PipelineSettings()
       with tempfile.TemporaryDirectory() as tmpdirname:

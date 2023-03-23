@@ -124,7 +124,7 @@ class PipelineSettings():
     edition = 'advanced', target="default", storage=None,
     continuous=False,photon=False, 
     channel='CURRENT', development=True, id = None, 
-    configuration=None, clusters=None, pipeline_files=None):
+    configuration=None, clusters=None, pipeline_files=None, catalog=None):
         self.name = name
         self.libraries = libraries
         self.edition= edition
@@ -138,6 +138,7 @@ class PipelineSettings():
         self.configuration = configuration
         self.clusters = clusters
         self.pipeline_files = pipeline_files
+        self.catalog = catalog
      
     def load(self, directory):
         settings_path  = Path(directory,"pipeline.json").as_posix()
@@ -194,9 +195,11 @@ class PipelineSettings():
            "photon": self.photon,
            "channel": self.channel
         }
+        if self.catalog:
+            json_body["catalog"] = self.catalog
         if self.configuration:
             json_body["configuration"] = self.configuration
-        if self.storage:
+        if self.storage and not self.catalog:
             json_body["storage"] = self.storage
 
         if self.target:
